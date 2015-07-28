@@ -26,11 +26,11 @@ export NUM_DOCUMENTS_PER_INSERT=$3
 
 # total number of documents to insert per second, allows for the benchmark to be rate limited
 #   valid values : integer > 0
-export MAX_INSERTS_PER_SECOND=999999
+export MAX_INSERTS_PER_SECOND=$4
 
 # total number of simultaneous insertion threads
 #   valid values : integer > 0
-export NUM_LOADER_THREADS=10
+export NUM_LOADER_THREADS=$5
 
 # database in which to run the benchmark
 #   valid values : character
@@ -60,7 +60,7 @@ export NUM_CHAR_FIELDS=1
 
 # size (in bytes) of each additional semi-compressible character field
 #   valid values : integer >= 0
-export LENGTH_CHAR_FIELDS=$4
+export LENGTH_CHAR_FIELDS=$6
 
 # percentage of highly compressible data (repeated character "a") in character field
 #   valid values : integer >= 0 and <= 100
@@ -68,7 +68,7 @@ export PERCENT_COMPRESSIBLE=50
 
 # number of secondary indexes to maintain
 #   valid values : integer >= 0 and <= 3
-export NUM_SECONDARY_INDEXES=3
+export NUM_SECONDARY_INDEXES=$7
 
 # the following 4 parameters allow an insert plus query workload benchmark
 
@@ -78,10 +78,10 @@ export QUERY_LIMIT=4
 
 # wait this many inserts to begin the query workload
 #   valid values : integer > 0
-export QUERY_NUM_DOCS_BEGIN=100000
+export QUERY_NUM_DOCS_BEGIN=10000
 
 # number of query threads, must be >= 0
-export QUERY_THREADS=$5
+export QUERY_THREADS=$8
 
 # sleep time before a thread starts the next query, must be >= 0
 export MS_BETWEEN_QUERIES=0
@@ -103,8 +103,13 @@ export BENCHMARK_TSV=${LOG_NAME}.tsv
 rm -f $LOG_NAME
 rm -f $BENCHMARK_TSV
 
-python mstat.py --loops 1000000 --interval 10 >& o.mstat.r &
-mid=$!
+iostat -kx 10 >& o.io.r &
+iid=$!
+vmstat 10 >& o.vm.r &
+vid=$!
+
+# python mstat.py --loops 1000000 --interval 10 >& o.mstat.r &
+# mid=$!
 
 T="$(date +%s)"
 $JAVA -cp $CLASSPATH:$PWD/src jmongoiibench $DB_NAME $NUM_LOADER_THREADS $MAX_ROWS $NUM_DOCUMENTS_PER_INSERT $NUM_INSERTS_PER_FEEDBACK $NUM_SECONDS_PER_FEEDBACK $BENCHMARK_TSV $MONGO_COMPRESSION $MONGO_BASEMENT $RUN_SECONDS $QUERY_LIMIT $QUERY_NUM_DOCS_BEGIN $MAX_INSERTS_PER_SECOND $WRITE_CONCERN $MONGO_SERVER $MONGO_PORT $NUM_CHAR_FIELDS $LENGTH_CHAR_FIELDS $NUM_SECONDARY_INDEXES $PERCENT_COMPRESSIBLE $CREATE_COLLECTION $QUERY_THREADS $MS_BETWEEN_QUERIES $QUERY_DIRECTION 2>&1 | tee -a $LOG_NAME
@@ -112,12 +117,13 @@ echo "" | tee -a $LOG_NAME
 T="$(($(date +%s)-T))"
 printf "`date` | iibench duration = %02d:%02d:%02d:%02d\n" "$((T/86400))" "$((T/3600%24))" "$((T/60%60))" "$((T%60))" | tee -a $LOG_NAME
 
-export mdir=$6
+export mdir=$9
 echo "db.serverStatus()" | ${mdir}/bin/mongo > o.status
 du -hs ${mdir}/data >> $LOG_NAME
 du -hs --apparent-size ${mdir}/data >> $LOG_NAME
 ps aux | grep mongod | grep -v grep >> $LOG_NAME
 tail -3 $LOG_NAME
 
-kill $mid
-
+# kill $mid
+kill $iid
+kill $vid

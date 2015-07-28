@@ -468,7 +468,7 @@ public class jmongoiibench {
             this.threadCount = threadCount;
             this.threadNumber = threadNumber;
             this.db = db;
-            rand = new java.util.Random((long) threadNumber);
+            rand = new java.util.Random((long) threadNumber + globalQueriesStarted.get());
         }
         public void run() {
             long t0 = System.currentTimeMillis();
