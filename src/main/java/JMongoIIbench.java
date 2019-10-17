@@ -15,6 +15,7 @@ import java.io.FileWriter;
 import java.io.File;
 import java.io.Writer;
 import java.io.IOException;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class JMongoIIbench {
@@ -74,36 +75,39 @@ public class JMongoIIbench {
     }
 
     public static void main (String[] args) throws Exception {
-        if (args.length != 24) {
+        final Properties props = new Properties();
+        props.load(JMongoIIbench.class.getResourceAsStream("iibench.properties"));
+
+        if (props == null) {
             logMe("*** ERROR : CONFIGURATION ISSUE ***");
-            logMe("JMongoIIbench [database name] [number of writer threads] [documents per collection] [documents per insert] [inserts feedback] [seconds feedback] [log file name] [compression type] [basement node size (bytes)] [number of seconds to run] [query limit] [inserts for begin query] [max inserts per second] [writeconcern] [server] [port] [num char fields] [length char fields] [num secondary indexes] [percent compressible] [create collection] [number of query threads] [millisecs between queries] [query index direction]");
+            logMe("iibench properties not found.");
             System.exit(1);
         }
-        
-        dbName = args[0];
-        writerThreads = Integer.valueOf(args[1]);
-        numMaxInserts = Integer.valueOf(args[2]);
-        documentsPerInsert = Integer.valueOf(args[3]);
-        insertsPerFeedback = Long.valueOf(args[4]);
-        secondsPerFeedback = Long.valueOf(args[5]);
-        logFileName = args[6];
-        compressionType = args[7];
-        basementSize = Integer.valueOf(args[8]);
-        numSeconds = Long.valueOf(args[9]);
-        queryLimit = Integer.valueOf(args[10]);
-        queryBeginNumDocs = Integer.valueOf(args[11]);
-        maxInsertsPerSecond = Integer.valueOf(args[12]);
-        myWriteConcern = args[13];
-        serverName = args[14];
-        serverPort = Integer.valueOf(args[15]);
-        numCharFields = Integer.valueOf(args[16]);
-        lengthCharFields = Integer.valueOf(args[17]);
-        numSecondaryIndexes = Integer.valueOf(args[18]);
-        percentCompressible = Integer.valueOf(args[19]);
-        createCollection = args[20].toLowerCase();
-        queryThreads = Integer.valueOf(args[21]);
-        msBetweenQueries = Integer.valueOf(args[22]);
-        queryIndexDirection = Integer.valueOf(args[23]);
+
+        dbName = props.getProperty("DB_NAME");
+        writerThreads = Integer.valueOf(props.getProperty("NUM_LOADER_THREADS"));
+        numMaxInserts = Integer.valueOf(props.getProperty("MAX_ROWS"));
+        documentsPerInsert = Integer.valueOf(props.getProperty("NUM_DOCUMENTS_PER_INSERT"));
+        insertsPerFeedback = Integer.valueOf(props.getProperty("NUM_INSERTS_PER_FEEDBACK"));
+        secondsPerFeedback = Integer.valueOf(props.getProperty("NUM_SECONDS_PER_FEEDBACK"));
+        logFileName = props.getProperty("BENCHMARK_TSV");
+        compressionType = props.getProperty("MONGO_COMPRESSION");
+        basementSize = Integer.valueOf(props.getProperty("MONGO_BASEMENT"));
+        numSeconds = Long.valueOf(props.getProperty("RUN_SECONDS"));
+        queryLimit = Integer.valueOf(props.getProperty("QUERY_LIMIT"));
+        queryBeginNumDocs = Integer.valueOf(props.getProperty("QUERY_NUM_DOCS_BEGIN"));
+        maxInsertsPerSecond = Integer.valueOf(props.getProperty("MAX_INSERTS_PER_SECOND"));
+        myWriteConcern = props.getProperty("WRITE_CONCERN");
+        serverName = props.getProperty("MONGO_SERVER");
+        serverPort = Integer.valueOf(props.getProperty("MONGO_PORT"));
+        numCharFields = Integer.valueOf(props.getProperty("NUM_CHAR_FIELDS"));
+        lengthCharFields = Integer.valueOf(props.getProperty("LENGTH_CHAR_FIELDS"));
+        numSecondaryIndexes = Integer.valueOf(props.getProperty("NUM_SECONDARY_INDEXES"));
+        percentCompressible = Integer.valueOf(props.getProperty("PERCENT_COMPRESSIBLE"));
+        createCollection = props.get("CREATE_COLLECTION").toString().toLowerCase();
+        queryThreads = Integer.valueOf(props.getProperty("QUERY_THREADS"));
+        msBetweenQueries = Integer.valueOf(props.getProperty("MS_BETWEEN_QUERIES"));
+        queryIndexDirection = Integer.valueOf(props.getProperty("QUERY_DIRECTION"));
 
         if (queryIndexDirection != 1 && queryIndexDirection != -1) {
           logMe("*** ERROR: queryIndexDirection must be 1 or -1 ***");
