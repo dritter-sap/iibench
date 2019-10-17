@@ -8,7 +8,7 @@ Requirements
 =====================
 
 * Java 1.6 or 1.7
-* The MongoDB Java driver must exist and be in the CLASSPATH, as in "export CLASSPATH=/home/tcallaghan/java_goodies/mongo-2.11.4.jar:.". If you don't already have the MongoDB Java driver, then execute the following two commands:
+<!---* The MongoDB Java driver must exist and be in the CLASSPATH, as in "export CLASSPATH=/home/tcallaghan/java_goodies/mongo-2.11.4.jar:.". If you don't already have the MongoDB Java driver, then execute the following two commands:
 
 ```bash
 wget http://central.maven.org/maven2/org/mongodb/mongo-java-driver/2.11.4/mongo-java-driver-2.11.4.jar
@@ -17,7 +17,7 @@ export CLASSPATH=$PWD/mongo-java-driver-2.11.4.jar:$CLASSPATH
 ```
 
 * This example assumes that you already have a MongoDB or TokuMX server running on the same machine as the iiBench client application.
-* You can connect a different server or port by editing the run.simple.bash script. 
+* You can connect a different server or port by editing the run.simple.bash script. -->
 
 
 Running the benchmark
