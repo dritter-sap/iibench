@@ -18,7 +18,7 @@ import java.io.IOException;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class JMongoIIbench {
+public class IIbench {
     public static AtomicLong globalInserts = new AtomicLong(0);
     public static AtomicLong globalWriterThreads = new AtomicLong(0);
     public static AtomicLong globalQueryThreads = new AtomicLong(0);
@@ -63,27 +63,28 @@ public class JMongoIIbench {
     
     public static int allDone = 0;
     
-    public JMongoIIbench() {
+    public IIbench() {
     }
 
     public static void main (String[] args) throws Exception {
         final Properties props = new Properties();
-        props.load(JMongoIIbench.class.getResourceAsStream("iibench.properties"));
+        props.load(IIbench.class.getResourceAsStream("iibench.properties"));
         if (props == null) {
             throw new IllegalArgumentException("'iibench.properties' file not found.");
         }
-
-        final JMongoIIbench jmiib = new JMongoIIbench();
-        jmiib.process(props);
+        final IIbench iib = new IIbench();
+        iib.process(props);
 
     }
 
     private void process(final Properties props) throws Exception {
-        final JMongoIIbenchConfig config = new JMongoIIbenchBuilder().dbName(props.getProperty("DB_NAME"))
+        final IIbenchConfig config = new IIbenchBuilder().dbName(props.getProperty("DB_NAME"))
                 .writerThreads(Integer.valueOf(props.getProperty("NUM_LOADER_THREADS"))).numMaxInserts(Integer.valueOf(props.getProperty("MAX_ROWS")))
                 .documentsPerInsert(Integer.valueOf(props.getProperty("NUM_DOCUMENTS_PER_INSERT"))).insertsPerFeedback(Integer.valueOf(props.getProperty("NUM_INSERTS_PER_FEEDBACK")))
                 .secondsPerFeedback(Integer.valueOf(props.getProperty("NUM_SECONDS_PER_FEEDBACK"))).logFileName(props.getProperty("BENCHMARK_TSV"))
                 .compressionType(props.getProperty("MONGO_COMPRESSION")).build();
+
+        // TODO: add to builder
         basementSize = Integer.valueOf(props.getProperty("MONGO_BASEMENT"));
         numSeconds = Long.valueOf(props.getProperty("RUN_SECONDS"));
         queryLimit = Integer.valueOf(props.getProperty("QUERY_LIMIT"));
@@ -101,6 +102,7 @@ public class JMongoIIbench {
         msBetweenQueries = Integer.valueOf(props.getProperty("MS_BETWEEN_QUERIES"));
         queryIndexDirection = Integer.valueOf(props.getProperty("QUERY_DIRECTION"));
 
+        // TODO: inline checks to builder
         if (queryIndexDirection != 1 && queryIndexDirection != -1) {
             logMe("*** ERROR: queryIndexDirection must be 1 or -1 ***");
             System.exit(1);
@@ -108,6 +110,7 @@ public class JMongoIIbench {
 
         maxThreadInsertsPerSecond = (int) ((double)maxInsertsPerSecond / (config.getWriterThreads() > 0 ? config.getWriterThreads() : 1));
 
+        // TODO: separate db config and runners
         WriteConcern myWC = new WriteConcern();
         if (myWriteConcern.toLowerCase().equals("fsync_safe")) {
             myWC = WriteConcern.FSYNC_SAFE;
@@ -145,28 +148,7 @@ public class JMongoIIbench {
         numCompressibleCharacters = (int) (((double) percentCompressible / 100.0) * (double) lengthCharFields);
         numUncompressibleCharacters = (int) (((100.0 - (double) percentCompressible) / 100.0) * (double) lengthCharFields);
 
-        logMe("Application Parameters");
-        logMe("--------------------------------------------------");
-        logMe("  database name = %s", config.getDbName());
-        logMe("  %d writer thread(s)", config.getWriterThreads());
-        logMe("  %d query thread(s)",queryThreads);
-        logMe("  %,d documents per collection",config.getMaxRows());
-        logMe("  %d character fields",numCharFields);
-        logMe("  %d bytes per character field",lengthCharFields);
-        logMe("  %d secondary indexes",numSecondaryIndexes);
-        logMe("  Documents Per Insert = %d",config.getNumDocumentsPerInsert());
-        logMe("  Maximum of %,d insert(s) per second",maxInsertsPerSecond);
-        logMe("  Maximum of %,d insert(s) per second per writer thread",maxThreadInsertsPerSecond);
-        logMe("  Feedback every %,d seconds(s)",config.getNumSecondsPerFeedback());
-        logMe("  Feedback every %,d inserts(s)",config.getNumInsertsPerFeedback());
-        logMe("  logging to file %s",config.getLogFileName());
-        logMe("  Run for %,d second(s)",numSeconds);
-        logMe("  Extra character fields are %d percent compressible",percentCompressible);
-        logMe("  %,d milliseconds between queries", msBetweenQueries);
-        logMe("  Queries limited to %,d document(s) with index direction %,d", queryLimit, queryIndexDirection);
-        logMe("  Starting queries after %,d document(s) inserted",queryBeginNumDocs);
-        logMe("  write concern = %s",myWriteConcern);
-        logMe("  Server:Port = %s:%d",serverName,serverPort);
+        this.logSelectedApplicationParameters(config);
 
         MongoClientOptions clientOptions = new MongoClientOptions.Builder().connectionsPerHost(2048).socketTimeout(600000).writeConcern(myWC).build();
         ServerAddress srvrAdd = new ServerAddress(serverName,serverPort);
@@ -350,6 +332,31 @@ public class JMongoIIbench {
         logMe("Done!");
 
         System.exit(0);
+    }
+
+    private void logSelectedApplicationParameters(final IIbenchConfig config) {
+        logMe("Application Parameters");
+        logMe("--------------------------------------------------");
+        logMe("  database name = %s", config.getDbName());
+        logMe("  %d writer thread(s)", config.getWriterThreads());
+        logMe("  %d query thread(s)",queryThreads);
+        logMe("  %,d documents per collection",config.getMaxRows());
+        logMe("  %d character fields",numCharFields);
+        logMe("  %d bytes per character field",lengthCharFields);
+        logMe("  %d secondary indexes",numSecondaryIndexes);
+        logMe("  Documents Per Insert = %d",config.getNumDocumentsPerInsert());
+        logMe("  Maximum of %,d insert(s) per second",maxInsertsPerSecond);
+        logMe("  Maximum of %,d insert(s) per second per writer thread",maxThreadInsertsPerSecond);
+        logMe("  Feedback every %,d seconds(s)",config.getNumSecondsPerFeedback());
+        logMe("  Feedback every %,d inserts(s)",config.getNumInsertsPerFeedback());
+        logMe("  logging to file %s",config.getLogFileName());
+        logMe("  Run for %,d second(s)",numSeconds);
+        logMe("  Extra character fields are %d percent compressible",percentCompressible);
+        logMe("  %,d milliseconds between queries", msBetweenQueries);
+        logMe("  Queries limited to %,d document(s) with index direction %,d", queryLimit, queryIndexDirection);
+        logMe("  Starting queries after %,d document(s) inserted",queryBeginNumDocs);
+        logMe("  write concern = %s",myWriteConcern);
+        logMe("  Server:Port = %s:%d",serverName,serverPort);
     }
 
     class MyWriter implements Runnable {
@@ -605,9 +612,9 @@ public class JMongoIIbench {
     }
 
     class ResultToConsoleReporter implements Runnable {
-        final JMongoIIbenchConfig config;
+        final IIbenchConfig config;
 
-        public ResultToConsoleReporter(final JMongoIIbenchConfig config) {
+        public ResultToConsoleReporter(final IIbenchConfig config) {
             this.config = config;
         }
 

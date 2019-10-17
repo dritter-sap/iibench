@@ -1,4 +1,4 @@
-public class JMongoIIbenchConfig {
+public class IIbenchConfig {
     private final String dbName;
     private final int writerThreads;
     private Integer maxRows;
@@ -8,9 +8,9 @@ public class JMongoIIbenchConfig {
     private final String logFileName;
     private final String compressionType;
 
-    public JMongoIIbenchConfig(String dbName, int writerThreads, Integer maxRows, Integer numDocumentsPerInsert,
-                               Integer numInsertsPerFeedback, Integer numSecondsPerFeedback, String logFileName,
-                               String compressionType) {
+    public IIbenchConfig(String dbName, int writerThreads, Integer maxRows, Integer numDocumentsPerInsert,
+                         Integer numInsertsPerFeedback, Integer numSecondsPerFeedback, String logFileName,
+                         String compressionType) {
         this.dbName = dbName;
         this.writerThreads = writerThreads;
         this.maxRows = maxRows;
