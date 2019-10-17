@@ -1,4 +1,3 @@
-//import com.mongodb.Mongo;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientOptions;
 import com.mongodb.DB;
@@ -6,26 +5,19 @@ import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
-import com.mongodb.DBCursor;
 import com.mongodb.ServerAddress;
 import com.mongodb.WriteConcern;
 import com.mongodb.CommandResult;
 
-import java.util.Arrays;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.Properties;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.File;
 import java.io.Writer;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReentrantLock;
 
-public class jmongoiibench {
+public class JMongoIIbench {
     public static AtomicLong globalInserts = new AtomicLong(0);
     public static AtomicLong globalWriterThreads = new AtomicLong(0);
     public static AtomicLong globalQueryThreads = new AtomicLong(0);
@@ -78,13 +70,13 @@ public class jmongoiibench {
     
     public static int allDone = 0;
     
-    public jmongoiibench() {
+    public JMongoIIbench() {
     }
 
     public static void main (String[] args) throws Exception {
         if (args.length != 24) {
             logMe("*** ERROR : CONFIGURATION ISSUE ***");
-            logMe("jmongoiibench [database name] [number of writer threads] [documents per collection] [documents per insert] [inserts feedback] [seconds feedback] [log file name] [compression type] [basement node size (bytes)] [number of seconds to run] [query limit] [inserts for begin query] [max inserts per second] [writeconcern] [server] [port] [num char fields] [length char fields] [num secondary indexes] [percent compressible] [create collection] [number of query threads] [millisecs between queries] [query index direction]");
+            logMe("JMongoIIbench [database name] [number of writer threads] [documents per collection] [documents per insert] [inserts feedback] [seconds feedback] [log file name] [compression type] [basement node size (bytes)] [number of seconds to run] [query limit] [inserts for begin query] [max inserts per second] [writeconcern] [server] [port] [num char fields] [length char fields] [num secondary indexes] [percent compressible] [create collection] [number of query threads] [millisecs between queries] [query index direction]");
             System.exit(1);
         }
         
@@ -295,7 +287,7 @@ public class jmongoiibench {
         compressibleStringHolder = new String(tempStringCompressible);
 
 
-        jmongoiibench t = new jmongoiibench();
+        JMongoIIbench t = new JMongoIIbench();
 
         Thread reporterThread = new Thread(t.new MyReporter());
         reporterThread.start();
