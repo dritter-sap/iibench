@@ -35,16 +35,8 @@ public class JMongoIIbench {
     public static int numCustomers = 100000;
     public static double maxPrice = 500.0;
 
-    public static String dbName;
-    public static int writerThreads;
     public static int queryThreads;
-    public static Integer numMaxInserts;
-    public static int documentsPerInsert;
-    public static long insertsPerFeedback;
-    public static long secondsPerFeedback;
-    public static String compressionType;
     public static int basementSize;
-    public static String logFileName;
     public static String indexTechnology;
     public static Long numSeconds;
     public static Integer msBetweenQueries;
@@ -77,21 +69,21 @@ public class JMongoIIbench {
     public static void main (String[] args) throws Exception {
         final Properties props = new Properties();
         props.load(JMongoIIbench.class.getResourceAsStream("iibench.properties"));
-
         if (props == null) {
-            logMe("*** ERROR : CONFIGURATION ISSUE ***");
-            logMe("iibench properties not found.");
-            System.exit(1);
+            throw new IllegalArgumentException("'iibench.properties' file not found.");
         }
 
-        dbName = props.getProperty("DB_NAME");
-        writerThreads = Integer.valueOf(props.getProperty("NUM_LOADER_THREADS"));
-        numMaxInserts = Integer.valueOf(props.getProperty("MAX_ROWS"));
-        documentsPerInsert = Integer.valueOf(props.getProperty("NUM_DOCUMENTS_PER_INSERT"));
-        insertsPerFeedback = Integer.valueOf(props.getProperty("NUM_INSERTS_PER_FEEDBACK"));
-        secondsPerFeedback = Integer.valueOf(props.getProperty("NUM_SECONDS_PER_FEEDBACK"));
-        logFileName = props.getProperty("BENCHMARK_TSV");
-        compressionType = props.getProperty("MONGO_COMPRESSION");
+        final JMongoIIbench jmiib = new JMongoIIbench();
+        jmiib.process(props);
+
+    }
+
+    private void process(final Properties props) throws Exception {
+        final JMongoIIbenchConfig config = new JMongoIIbenchBuilder().dbName(props.getProperty("DB_NAME"))
+                .writerThreads(Integer.valueOf(props.getProperty("NUM_LOADER_THREADS"))).numMaxInserts(Integer.valueOf(props.getProperty("MAX_ROWS")))
+                .documentsPerInsert(Integer.valueOf(props.getProperty("NUM_DOCUMENTS_PER_INSERT"))).insertsPerFeedback(Integer.valueOf(props.getProperty("NUM_INSERTS_PER_FEEDBACK")))
+                .secondsPerFeedback(Integer.valueOf(props.getProperty("NUM_SECONDS_PER_FEEDBACK"))).logFileName(props.getProperty("BENCHMARK_TSV"))
+                .compressionType(props.getProperty("MONGO_COMPRESSION")).build();
         basementSize = Integer.valueOf(props.getProperty("MONGO_BASEMENT"));
         numSeconds = Long.valueOf(props.getProperty("RUN_SECONDS"));
         queryLimit = Integer.valueOf(props.getProperty("QUERY_LIMIT"));
@@ -110,12 +102,12 @@ public class JMongoIIbench {
         queryIndexDirection = Integer.valueOf(props.getProperty("QUERY_DIRECTION"));
 
         if (queryIndexDirection != 1 && queryIndexDirection != -1) {
-          logMe("*** ERROR: queryIndexDirection must be 1 or -1 ***");
-          System.exit(1);
+            logMe("*** ERROR: queryIndexDirection must be 1 or -1 ***");
+            System.exit(1);
         }
-        
-        maxThreadInsertsPerSecond = (int) ((double)maxInsertsPerSecond / (writerThreads > 0 ? writerThreads : 1));
-        
+
+        maxThreadInsertsPerSecond = (int) ((double)maxInsertsPerSecond / (config.getWriterThreads() > 0 ? config.getWriterThreads() : 1));
+
         WriteConcern myWC = new WriteConcern();
         if (myWriteConcern.toLowerCase().equals("fsync_safe")) {
             myWC = WriteConcern.FSYNC_SAFE;
@@ -131,7 +123,7 @@ public class JMongoIIbench {
         }
         else if ((myWriteConcern.toLowerCase().equals("safe"))) {
             myWC = WriteConcern.SAFE;
-        } 
+        }
         else {
             logMe("*** ERROR : WRITE CONCERN ISSUE ***");
             logMe("  write concern %s is not supported",myWriteConcern);
@@ -143,31 +135,31 @@ public class JMongoIIbench {
             logMe("  %d secondary indexes is not supported",numSecondaryIndexes);
             System.exit(1);
         }
-        
+
         if ((percentCompressible < 0) || (percentCompressible > 100)) {
             logMe("*** ERROR : INVALID PERCENT COMPRESSIBLE, MUST BE >=0 and <= 100 ***");
             logMe("  %d secondary indexes is not supported",percentCompressible);
             System.exit(1);
         }
-        
+
         numCompressibleCharacters = (int) (((double) percentCompressible / 100.0) * (double) lengthCharFields);
         numUncompressibleCharacters = (int) (((100.0 - (double) percentCompressible) / 100.0) * (double) lengthCharFields);
 
         logMe("Application Parameters");
         logMe("--------------------------------------------------");
-        logMe("  database name = %s",dbName);
-        logMe("  %d writer thread(s)",writerThreads);
+        logMe("  database name = %s", config.getDbName());
+        logMe("  %d writer thread(s)", config.getWriterThreads());
         logMe("  %d query thread(s)",queryThreads);
-        logMe("  %,d documents per collection",numMaxInserts);
+        logMe("  %,d documents per collection",config.getMaxRows());
         logMe("  %d character fields",numCharFields);
         logMe("  %d bytes per character field",lengthCharFields);
         logMe("  %d secondary indexes",numSecondaryIndexes);
-        logMe("  Documents Per Insert = %d",documentsPerInsert);
+        logMe("  Documents Per Insert = %d",config.getNumDocumentsPerInsert());
         logMe("  Maximum of %,d insert(s) per second",maxInsertsPerSecond);
         logMe("  Maximum of %,d insert(s) per second per writer thread",maxThreadInsertsPerSecond);
-        logMe("  Feedback every %,d seconds(s)",secondsPerFeedback);
-        logMe("  Feedback every %,d inserts(s)",insertsPerFeedback);
-        logMe("  logging to file %s",logFileName);
+        logMe("  Feedback every %,d seconds(s)",config.getNumSecondsPerFeedback());
+        logMe("  Feedback every %,d inserts(s)",config.getNumInsertsPerFeedback());
+        logMe("  logging to file %s",config.getLogFileName());
         logMe("  Run for %,d second(s)",numSeconds);
         logMe("  Extra character fields are %d percent compressible",percentCompressible);
         logMe("  %,d milliseconds between queries", msBetweenQueries);
@@ -175,20 +167,20 @@ public class JMongoIIbench {
         logMe("  Starting queries after %,d document(s) inserted",queryBeginNumDocs);
         logMe("  write concern = %s",myWriteConcern);
         logMe("  Server:Port = %s:%d",serverName,serverPort);
-        
+
         MongoClientOptions clientOptions = new MongoClientOptions.Builder().connectionsPerHost(2048).socketTimeout(600000).writeConcern(myWC).build();
         ServerAddress srvrAdd = new ServerAddress(serverName,serverPort);
         MongoClient m = new MongoClient(srvrAdd, clientOptions);
-        
+
         logMe("mongoOptions | " + m.getMongoOptions().toString());
         logMe("mongoWriteConcern | " + m.getWriteConcern().toString());
-        
-        DB db = m.getDB(dbName);
-        
+
+        final DB db = m.getDB(config.getDbName());
+
         // determine server type : mongo or tokumx
         DBObject checkServerCmd = new BasicDBObject();
         CommandResult commandResult = db.command("buildInfo");
-        
+
         // check if tokumxVersion exists, otherwise assume mongo
         if (commandResult.toString().contains("tokumxVersion")) {
             indexTechnology = "tokumx";
@@ -197,28 +189,28 @@ public class JMongoIIbench {
         {
             indexTechnology = "mongo";
         }
-        
+
         if ((!indexTechnology.toLowerCase().equals("tokumx")) && (!indexTechnology.toLowerCase().equals("mongo"))) {
             // unknown index technology, abort
             logMe(" *** Unknown Indexing Technology %s, shutting down",indexTechnology);
             System.exit(1);
         }
-        
+
         logMe("  index technology = %s",indexTechnology);
-        
+
         if (indexTechnology.toLowerCase().equals("tokumx")) {
-            logMe("  + compression type = %s",compressionType);
+            logMe("  + compression type = %s",config.getCompressionType());
             logMe("  + basement node size (bytes) = %d",basementSize);
         }
-        
+
         logMe("--------------------------------------------------");
-        
-        if (writerThreads > 1) {
-            numMaxInserts = numMaxInserts / writerThreads;
+
+        if (config.getWriterThreads() > 1) {
+            config.setMaxRows(config.getMaxRows() / config.getWriterThreads());
         }
 
         try {
-            writer = new BufferedWriter(new FileWriter(new File(logFileName)));
+            writer = new BufferedWriter(new FileWriter(new File(config.getLogFileName())));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -231,11 +223,11 @@ public class JMongoIIbench {
         {
             // create the collection
             String collectionName = "purchases_index";
-    
+
             if (indexTechnology.toLowerCase().equals("tokumx")) {
                 DBObject cmd = new BasicDBObject();
                 cmd.put("create", collectionName);
-                cmd.put("compression", compressionType);
+                cmd.put("compression", config.getCompressionType());
                 cmd.put("readPageSize", basementSize);
                 CommandResult result = db.command(cmd);
                 //logMe(result.toString());
@@ -248,15 +240,15 @@ public class JMongoIIbench {
             }
 
             DBCollection coll = db.getCollection(collectionName);
-    
+
             BasicDBObject idxOptions = new BasicDBObject();
             idxOptions.put("background",false);
-    
+
             if (indexTechnology.toLowerCase().equals("tokumx")) {
-                idxOptions.put("compression",compressionType);
+                idxOptions.put("compression",config.getCompressionType());
                 idxOptions.put("readPageSize",basementSize);
             }
-    
+
             if (numSecondaryIndexes >= 1) {
                 logMe(" *** creating secondary index on price + customerid");
                 coll.ensureIndex(new BasicDBObject("price", 1).append("customerid", 1), idxOptions);
@@ -277,7 +269,7 @@ public class JMongoIIbench {
         // create random string holder
         logMe("  creating %,d bytes of random character data...",randomStringLength);
         char[] tempString = new char[randomStringLength];
-        for (int i = 0 ; i < randomStringLength ; i++) { 
+        for (int i = 0 ; i < randomStringLength ; i++) {
             tempString[i] = (char) (rand.nextInt(26) + 'a');
         }
         randomStringHolder = new String(tempString);
@@ -285,30 +277,27 @@ public class JMongoIIbench {
         // create compressible string holder
         logMe("  creating %,d bytes of compressible character data...",compressibleStringLength);
         char[] tempStringCompressible = new char[compressibleStringLength];
-        for (int i = 0 ; i < compressibleStringLength ; i++) { 
+        for (int i = 0 ; i < compressibleStringLength ; i++) {
             tempStringCompressible[i] = 'a';
         }
         compressibleStringHolder = new String(tempStringCompressible);
 
-
-        JMongoIIbench t = new JMongoIIbench();
-
-        Thread reporterThread = new Thread(t.new MyReporter());
+        Thread reporterThread = new Thread(this.new ResultToConsoleReporter(config));
         reporterThread.start();
 
-        Thread[] tWriterThreads = new Thread[writerThreads];
-        
+        Thread[] tWriterThreads = new Thread[config.getWriterThreads()];
+
         // start the loaders
-        for (int i=0; i<writerThreads; i++) {
+        for (int i=0; i<config.getWriterThreads(); i++) {
             globalWriterThreads.incrementAndGet();
-            tWriterThreads[i] = new Thread(t.new MyWriter(writerThreads, i, numMaxInserts, db, maxThreadInsertsPerSecond));
+            tWriterThreads[i] = new Thread(this.new MyWriter(config.getWriterThreads(), i, config.getMaxRows(), db, maxThreadInsertsPerSecond, config.getNumDocumentsPerInsert()));
             tWriterThreads[i].start();
         }
 
         // start the query threads
         Thread[] tQueryThreads = new Thread[queryThreads];
         if (queryThreads > 0) {
-            if (writerThreads > 0) {
+            if (config.getWriterThreads() > 0) {
                 while (globalInserts.get() < queryBeginNumDocs) {
                     try {
                         Thread.sleep(100);
@@ -319,7 +308,7 @@ public class JMongoIIbench {
             globalQueriesStarted.set(System.currentTimeMillis());
 
             for (int i=0; i<queryThreads; i++) {
-                tQueryThreads[i] = new Thread(t.new MyQuery(queryThreads, i, db));
+                tQueryThreads[i] = new Thread(this.new MyQuery(queryThreads, i, db));
                 tQueryThreads[i].start();
             }
         }
@@ -341,11 +330,11 @@ public class JMongoIIbench {
         }
 
         // wait for writer threads to terminate
-        for (int i=0; i<writerThreads; i++) {
+        for (int i=0; i<config.getWriterThreads(); i++) {
             if (tWriterThreads[i].isAlive())
                 tWriterThreads[i].join();
         }
-        
+
         try {
             if (writer != null) {
                 writer.close();
@@ -353,14 +342,16 @@ public class JMongoIIbench {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        
+
         // m.dropDatabase("mydb");
 
         m.close();
-        
+
         logMe("Done!");
+
+        System.exit(0);
     }
-    
+
     class MyWriter implements Runnable {
         int threadCount; 
         int threadNumber; 
@@ -369,14 +360,16 @@ public class JMongoIIbench {
         DB db;
         
         java.util.Random rand;
-        
-        MyWriter(int threadCount, int threadNumber, int numMaxInserts, DB db, int maxInsertsPerSecond) {
+        private int documentsPerInsert;
+
+        MyWriter(int threadCount, int threadNumber, int numMaxInserts, DB db, int maxInsertsPerSecond, int documentsPerInsert) {
             this.threadCount = threadCount;
             this.threadNumber = threadNumber;
             this.numMaxInserts = numMaxInserts;
             this.maxInsertsPerSecond = maxInsertsPerSecond;
             this.db = db;
             rand = new java.util.Random((long) threadNumber);
+            this.documentsPerInsert = documentsPerInsert;
         }
         public void run() {
             String collectionName = "purchases_index";
@@ -611,9 +604,13 @@ public class JMongoIIbench {
         }
     }
 
-    
-    // reporting thread, outputs information to console and file
-    class MyReporter implements Runnable {
+    class ResultToConsoleReporter implements Runnable {
+        final JMongoIIbenchConfig config;
+
+        public ResultToConsoleReporter(final JMongoIIbenchConfig config) {
+            this.config = config;
+        }
+
         public void run()
         {
             long t0 = System.currentTimeMillis();
@@ -622,8 +619,8 @@ public class JMongoIIbench {
             long lastQueriesMs = 0;
             long lastMs = t0;
             long intervalNumber = 0;
-            long nextFeedbackMillis = t0 + (1000 * secondsPerFeedback * (intervalNumber + 1));
-            long nextFeedbackInserts = lastInserts + insertsPerFeedback;
+            long nextFeedbackMillis = t0 + (1000 * config.getNumSecondsPerFeedback() * (intervalNumber + 1));
+            long nextFeedbackInserts = lastInserts + config.getNumInsertsPerFeedback();
             long thisInserts = 0;
             long thisQueriesNum = 0;
             long thisQueriesMs = 0;
@@ -649,12 +646,12 @@ public class JMongoIIbench {
                 thisQueriesNum = globalQueriesExecuted.get();
                 thisQueriesMs = globalQueriesTimeMs.get();
                 thisQueriesStarted = globalQueriesStarted.get();
-                if (((now > nextFeedbackMillis) && (secondsPerFeedback > 0)) ||
-                    ((thisInserts >= nextFeedbackInserts) && (insertsPerFeedback > 0)))
+                if (((now > nextFeedbackMillis) && (config.getNumSecondsPerFeedback() > 0)) ||
+                    ((thisInserts >= nextFeedbackInserts) && (config.getNumInsertsPerFeedback() > 0)))
                 {
                     intervalNumber++;
-                    nextFeedbackMillis = t0 + (1000 * secondsPerFeedback * (intervalNumber + 1));
-                    nextFeedbackInserts = (intervalNumber + 1) * insertsPerFeedback;
+                    nextFeedbackMillis = t0 + (1000 * config.getNumSecondsPerFeedback() * (intervalNumber + 1));
+                    nextFeedbackInserts = (intervalNumber + 1) * config.getNumInsertsPerFeedback();
 
                     long elapsed = now - t0;
                     long thisIntervalMs = now - lastMs;
@@ -692,11 +689,11 @@ public class JMongoIIbench {
                         }
                     }
                     
-                    if (secondsPerFeedback > 0)
+                    if (config.getNumSecondsPerFeedback() > 0)
                     {
                         logMe("%,d inserts : %,d seconds : cum ips=%,.2f : int ips=%,.2f : cum avg qry=%,.2f : int avg qry=%,.2f : cum avg qps=%,.2f : int avg qps=%,.2f : exceptions=%,d", thisInserts, elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS, thisInsertExceptions);
                     } else {
-                        logMe("%,d inserts : %,d seconds : cum ips=%,.2f : int ips=%,.2f : cum avg qry=%,.2f : int avg qry=%,.2f : cum avg qps=%,.2f : int avg qps=%,.2f : exceptions=%,d", intervalNumber * insertsPerFeedback, elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS, thisInsertExceptions);
+                        logMe("%,d inserts : %,d seconds : cum ips=%,.2f : int ips=%,.2f : cum avg qry=%,.2f : int avg qry=%,.2f : cum avg qps=%,.2f : int avg qps=%,.2f : exceptions=%,d", intervalNumber * config.getNumInsertsPerFeedback(), elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS, thisInsertExceptions);
                     }
                     
                     try {
@@ -708,11 +705,11 @@ public class JMongoIIbench {
                             
                         String statusUpdate = "";
                         
-                        if (secondsPerFeedback > 0)
+                        if (config.getNumSecondsPerFeedback() > 0)
                         {
                             statusUpdate = String.format("%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%,d\n",thisInserts, elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS, thisInsertExceptions);
                         } else {
-                            statusUpdate = String.format("%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%,d\n",intervalNumber * insertsPerFeedback, elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS, thisInsertExceptions);
+                            statusUpdate = String.format("%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%,d\n",intervalNumber * config.getNumInsertsPerFeedback(), elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS, thisInsertExceptions);
                         }
                         writer.write(statusUpdate);
                         writer.flush();
@@ -735,8 +732,8 @@ public class JMongoIIbench {
             thisQueriesMs = globalQueriesTimeMs.get();
             thisQueriesStarted = globalQueriesStarted.get();
             intervalNumber++;
-            nextFeedbackMillis = t0 + (1000 * secondsPerFeedback * (intervalNumber + 1));
-            nextFeedbackInserts = (intervalNumber + 1) * insertsPerFeedback;
+            nextFeedbackMillis = t0 + (1000 * config.getNumSecondsPerFeedback() * (intervalNumber + 1));
+            nextFeedbackInserts = (intervalNumber + 1) * config.getNumInsertsPerFeedback();
             long elapsed = now - t0;
             long thisIntervalMs = now - lastMs;
             long thisIntervalInserts = thisInserts - lastInserts;
@@ -766,11 +763,11 @@ public class JMongoIIbench {
                     thisIntervalAvgQPS = (double)thisIntervalQueriesNum/((double)thisIntervalMs/1000.0);
                 }
             }
-            if (secondsPerFeedback > 0)
+            if (config.getNumSecondsPerFeedback() > 0)
             {
                 logMe("%,d inserts : %,d seconds : cum ips=%,.2f : int ips=%,.2f : cum avg qry=%,.2f : int avg qry=%,.2f : cum avg qps=%,.2f : int avg qps=%,.2f", thisInserts, elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS);
             } else {
-                logMe("%,d inserts : %,d seconds : cum ips=%,.2f : int ips=%,.2f : cum avg qry=%,.2f : int avg qry=%,.2f : cum avg qps=%,.2f : int avg qps=%,.2f", intervalNumber * insertsPerFeedback, elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS);
+                logMe("%,d inserts : %,d seconds : cum ips=%,.2f : int ips=%,.2f : cum avg qry=%,.2f : int avg qry=%,.2f : cum avg qps=%,.2f : int avg qps=%,.2f", intervalNumber * config.getNumInsertsPerFeedback(), elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS);
             }
             try {
                 if (outputHeader)
@@ -779,11 +776,11 @@ public class JMongoIIbench {
                     outputHeader = false;
                 }
                 String statusUpdate = "";
-                if (secondsPerFeedback > 0)
+                if (config.getNumSecondsPerFeedback() > 0)
                 {
                     statusUpdate = String.format("%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",thisInserts, elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS);
                 } else {
-                    statusUpdate = String.format("%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",intervalNumber * insertsPerFeedback, elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS);
+                    statusUpdate = String.format("%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",intervalNumber * config.getNumInsertsPerFeedback(), elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS);
                 }
                 writer.write(statusUpdate);
                 writer.flush();
