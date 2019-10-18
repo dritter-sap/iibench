@@ -1,3 +1,5 @@
+package iibench;
+
 public class IIbenchBuilder {
     private String dbName;
     private int writerThreads;
@@ -7,9 +9,17 @@ public class IIbenchBuilder {
     private Integer numSecondsPerFeedback;
     private String logFileName;
     private String compressionType;
+    private String writeConcern;
+    private String serverName;
+    private Integer serverPort;
+    private Integer basementSize;
+    private Integer numSecondaryIndexes;
+    private Integer queryLimit;
 
     public IIbenchConfig build() {
-        return new IIbenchConfig(dbName, writerThreads, maxRows, numDocumentsPerInsert, numInsertsPerFeedback, numSecondsPerFeedback, logFileName, compressionType);
+        return new IIbenchConfig(dbName, writerThreads, maxRows, numDocumentsPerInsert, numInsertsPerFeedback,
+                numSecondsPerFeedback, logFileName, compressionType, writeConcern, serverName, serverPort, basementSize,
+                numSecondaryIndexes, queryLimit);
     }
 
     public IIbenchBuilder dbName(final String dbName) {
@@ -49,6 +59,39 @@ public class IIbenchBuilder {
 
     public IIbenchBuilder compressionType(final String compressionType) {
         this.compressionType = compressionType;
+        return this;
+    }
+
+    public IIbenchBuilder writeWriteConcen(final String writeConcern) {
+        this.writeConcern = writeConcern;
+        return this;
+    }
+
+    public IIbenchBuilder serverName(final String serverName) {
+        this.serverName = serverName;
+        return this;
+    }
+
+    public IIbenchBuilder serverPort(final Integer serverPort) {
+        this.serverPort = serverPort;
+        return this;
+    }
+
+    public IIbenchBuilder basementSize(final Integer basementSize) {
+        this.basementSize = basementSize;
+        return this;
+    }
+
+    public IIbenchBuilder numSecondaryIndexes(final Integer numSecondaryIndexes) {
+        if ((numSecondaryIndexes < 0) || (numSecondaryIndexes > 3)) {
+            throw new UnsupportedOperationException(numSecondaryIndexes + " secondary indexes is not supported");
+        }
+        this.numSecondaryIndexes = numSecondaryIndexes;
+        return this;
+    }
+
+    public IIbenchBuilder queryLimit(final Integer queryLimit) {
+        this.queryLimit = queryLimit;
         return this;
     }
 }

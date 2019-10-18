@@ -1,21 +1,13 @@
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientOptions;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBObject;
-import com.mongodb.ServerAddress;
-import com.mongodb.WriteConcern;
-import com.mongodb.CommandResult;
+package iibench;
 
-import java.util.ArrayList;
+import iibench.databases.MongoAccessor;
+
+import java.util.*;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.File;
 import java.io.Writer;
 import java.io.IOException;
-import java.util.Properties;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class IIbench {
@@ -26,8 +18,7 @@ public class IIbench {
     public static AtomicLong globalQueriesTimeMs = new AtomicLong(0);
     public static AtomicLong globalQueriesStarted = new AtomicLong(0);
     public static AtomicLong globalInsertExceptions = new AtomicLong(0);
-    
-    public static Writer writer = null;
+
     public static boolean outputHeader = true;
     
     public static int numCashRegisters = 1000;
@@ -36,30 +27,23 @@ public class IIbench {
     public static double maxPrice = 500.0;
 
     public static int queryThreads;
-    public static int basementSize;
-    public static String indexTechnology;
     public static Long numSeconds;
     public static Integer msBetweenQueries;
-    public static Integer queryLimit;
     public static Integer queryIndexDirection = 1;
     public static Integer queryBeginNumDocs;
     public static Integer maxInsertsPerSecond;
     public static Integer maxThreadInsertsPerSecond;
-    public static String myWriteConcern;
     public static String serverName;
     public static String createCollection;
     public static int serverPort;
     public static int numCharFields;
     public static int lengthCharFields;
-    public static int numSecondaryIndexes;
     public static int percentCompressible;
     public static int numCompressibleCharacters;
     public static int numUncompressibleCharacters;
 
     public static int randomStringLength = 4*1024*1024;
-    public static String randomStringHolder;
     public static int compressibleStringLength =  4*1024*1024;
-    public static String compressibleStringHolder;
     
     public static int allDone = 0;
     
@@ -74,7 +58,10 @@ public class IIbench {
         }
         final IIbench iib = new IIbench();
         iib.process(props);
+    }
 
+    public static void logMe(final String format, final Object... args) {
+        System.out.println(Thread.currentThread() + String.format(format, args));
     }
 
     private void process(final Properties props) throws Exception {
@@ -82,20 +69,16 @@ public class IIbench {
                 .writerThreads(Integer.valueOf(props.getProperty("NUM_LOADER_THREADS"))).numMaxInserts(Integer.valueOf(props.getProperty("MAX_ROWS")))
                 .documentsPerInsert(Integer.valueOf(props.getProperty("NUM_DOCUMENTS_PER_INSERT"))).insertsPerFeedback(Integer.valueOf(props.getProperty("NUM_INSERTS_PER_FEEDBACK")))
                 .secondsPerFeedback(Integer.valueOf(props.getProperty("NUM_SECONDS_PER_FEEDBACK"))).logFileName(props.getProperty("BENCHMARK_TSV"))
-                .compressionType(props.getProperty("MONGO_COMPRESSION")).build();
+                .compressionType(props.getProperty("COMPRESSION_TYPE")).writeWriteConcen(props.getProperty("WRITE_CONCERN")).serverName(props.getProperty("SERVER_NAME"))
+                .serverPort(Integer.valueOf(props.getProperty("SERVER_PORT"))).basementSize(Integer.valueOf(props.getProperty("MONGO_BASEMENT")))
+                .numSecondaryIndexes(Integer.valueOf(props.getProperty("NUM_SECONDARY_INDEXES"))).queryLimit(Integer.valueOf(props.getProperty("QUERY_LIMIT"))).build();
 
         // TODO: add to builder
-        basementSize = Integer.valueOf(props.getProperty("MONGO_BASEMENT"));
         numSeconds = Long.valueOf(props.getProperty("RUN_SECONDS"));
-        queryLimit = Integer.valueOf(props.getProperty("QUERY_LIMIT"));
         queryBeginNumDocs = Integer.valueOf(props.getProperty("QUERY_NUM_DOCS_BEGIN"));
         maxInsertsPerSecond = Integer.valueOf(props.getProperty("MAX_INSERTS_PER_SECOND"));
-        myWriteConcern = props.getProperty("WRITE_CONCERN");
-        serverName = props.getProperty("MONGO_SERVER");
-        serverPort = Integer.valueOf(props.getProperty("MONGO_PORT"));
         numCharFields = Integer.valueOf(props.getProperty("NUM_CHAR_FIELDS"));
         lengthCharFields = Integer.valueOf(props.getProperty("LENGTH_CHAR_FIELDS"));
-        numSecondaryIndexes = Integer.valueOf(props.getProperty("NUM_SECONDARY_INDEXES"));
         percentCompressible = Integer.valueOf(props.getProperty("PERCENT_COMPRESSIBLE"));
         createCollection = props.get("CREATE_COLLECTION").toString().toLowerCase();
         queryThreads = Integer.valueOf(props.getProperty("QUERY_THREADS"));
@@ -110,35 +93,6 @@ public class IIbench {
 
         maxThreadInsertsPerSecond = (int) ((double)maxInsertsPerSecond / (config.getWriterThreads() > 0 ? config.getWriterThreads() : 1));
 
-        // TODO: separate db config and runners
-        WriteConcern myWC = new WriteConcern();
-        if (myWriteConcern.toLowerCase().equals("fsync_safe")) {
-            myWC = WriteConcern.FSYNC_SAFE;
-        }
-        else if ((myWriteConcern.toLowerCase().equals("none"))) {
-            myWC = WriteConcern.NONE;
-        }
-        else if ((myWriteConcern.toLowerCase().equals("normal"))) {
-            myWC = WriteConcern.NORMAL;
-        }
-        else if ((myWriteConcern.toLowerCase().equals("replicas_safe"))) {
-            myWC = WriteConcern.REPLICAS_SAFE;
-        }
-        else if ((myWriteConcern.toLowerCase().equals("safe"))) {
-            myWC = WriteConcern.SAFE;
-        }
-        else {
-            logMe("*** ERROR : WRITE CONCERN ISSUE ***");
-            logMe("  write concern %s is not supported",myWriteConcern);
-            System.exit(1);
-        }
-
-        if ((numSecondaryIndexes < 0) || (numSecondaryIndexes > 3)) {
-            logMe("*** ERROR : INVALID NUMBER OF SECONDARY INDEXES, MUST BE >=0 and <= 3 ***");
-            logMe("  %d secondary indexes is not supported",numSecondaryIndexes);
-            System.exit(1);
-        }
-
         if ((percentCompressible < 0) || (percentCompressible > 100)) {
             logMe("*** ERROR : INVALID PERCENT COMPRESSIBLE, MUST BE >=0 and <= 100 ***");
             logMe("  %d secondary indexes is not supported",percentCompressible);
@@ -150,51 +104,15 @@ public class IIbench {
 
         this.logSelectedApplicationParameters(config);
 
-        MongoClientOptions clientOptions = new MongoClientOptions.Builder().connectionsPerHost(2048).socketTimeout(600000).writeConcern(myWC).build();
-        ServerAddress srvrAdd = new ServerAddress(serverName,serverPort);
-        MongoClient m = new MongoClient(srvrAdd, clientOptions);
+        final MongoAccessor mongoDb = new MongoAccessor(config);
 
-        logMe("mongoOptions | " + m.getMongoOptions().toString());
-        logMe("mongoWriteConcern | " + m.getWriteConcern().toString());
-
-        final DB db = m.getDB(config.getDbName());
-
-        // determine server type : mongo or tokumx
-        DBObject checkServerCmd = new BasicDBObject();
-        CommandResult commandResult = db.command("buildInfo");
-
-        // check if tokumxVersion exists, otherwise assume mongo
-        if (commandResult.toString().contains("tokumxVersion")) {
-            indexTechnology = "tokumx";
-        }
-        else
-        {
-            indexTechnology = "mongo";
-        }
-
-        if ((!indexTechnology.toLowerCase().equals("tokumx")) && (!indexTechnology.toLowerCase().equals("mongo"))) {
-            // unknown index technology, abort
-            logMe(" *** Unknown Indexing Technology %s, shutting down",indexTechnology);
-            System.exit(1);
-        }
-
-        logMe("  index technology = %s",indexTechnology);
-
-        if (indexTechnology.toLowerCase().equals("tokumx")) {
-            logMe("  + compression type = %s",config.getCompressionType());
-            logMe("  + basement node size (bytes) = %d",basementSize);
-        }
+        mongoDb.connect();
+        mongoDb.checkIndexUsed();
 
         logMe("--------------------------------------------------");
 
         if (config.getWriterThreads() > 1) {
             config.setMaxRows(config.getMaxRows() / config.getWriterThreads());
-        }
-
-        try {
-            writer = new BufferedWriter(new FileWriter(new File(config.getLogFileName())));
-        } catch (IOException e) {
-            e.printStackTrace();
         }
 
         if (createCollection.equals("n"))
@@ -203,135 +121,89 @@ public class IIbench {
         }
         else
         {
-            // create the collection
-            String collectionName = "purchases_index";
-
-            if (indexTechnology.toLowerCase().equals("tokumx")) {
-                DBObject cmd = new BasicDBObject();
-                cmd.put("create", collectionName);
-                cmd.put("compression", config.getCompressionType());
-                cmd.put("readPageSize", basementSize);
-                CommandResult result = db.command(cmd);
-                //logMe(result.toString());
-            } else if (indexTechnology.toLowerCase().equals("mongo")) {
-                // nothing special to do for a regular mongo collection
-            } else {
-                // unknown index technology, abort
-                logMe(" *** Unknown Indexing Technology %s, shutting down",indexTechnology);
-                System.exit(1);
-            }
-
-            DBCollection coll = db.getCollection(collectionName);
-
-            BasicDBObject idxOptions = new BasicDBObject();
-            idxOptions.put("background",false);
-
-            if (indexTechnology.toLowerCase().equals("tokumx")) {
-                idxOptions.put("compression",config.getCompressionType());
-                idxOptions.put("readPageSize",basementSize);
-            }
-
-            if (numSecondaryIndexes >= 1) {
-                logMe(" *** creating secondary index on price + customerid");
-                coll.ensureIndex(new BasicDBObject("price", 1).append("customerid", 1), idxOptions);
-            }
-            if (numSecondaryIndexes >= 2) {
-                logMe(" *** creating secondary index on cashregisterid + price + customerid");
-                coll.ensureIndex(new BasicDBObject("cashregisterid", 1).append("price", 1).append("customerid", 1), idxOptions);
-            }
-            if (numSecondaryIndexes >= 3) {
-                logMe(" *** creating secondary index on price + dateandtime + customerid");
-                coll.ensureIndex(new BasicDBObject("price", 1).append("dateandtime", 1).append("customerid", 1), idxOptions);
-            }
-            // END: create the collection
+            final String collectionName = "purchases_index";
+            mongoDb.createCollection(collectionName);
+            mongoDb.createIndexForCollection();
         }
 
-        java.util.Random rand = new java.util.Random();
+        try (final Writer writer = new BufferedWriter(new FileWriter(new File(config.getLogFileName())));) {
+            final Thread reporterThread = new Thread(this.new ResultToConsoleReporter(config, writer));
+            reporterThread.start();
 
-        // create random string holder
-        logMe("  creating %,d bytes of random character data...",randomStringLength);
-        char[] tempString = new char[randomStringLength];
-        for (int i = 0 ; i < randomStringLength ; i++) {
-            tempString[i] = (char) (rand.nextInt(26) + 'a');
+            // start the loaders
+            final Thread[] tWriterThreads = new Thread[config.getWriterThreads()];
+            for (int i=0; i<config.getWriterThreads(); i++) {
+                globalWriterThreads.incrementAndGet();
+                tWriterThreads[i] = new Thread(this.new MyWriter(config.getWriterThreads(), i, config.getMaxRows(), mongoDb,
+                        maxThreadInsertsPerSecond, config.getNumDocumentsPerInsert(), createRandomStringForHolder(),
+                        createCompressibleStringHolder(), config));
+                tWriterThreads[i].start();
+            }
+
+            // start the queryAndMeasureElapsed threads
+            Thread[] tQueryThreads = new Thread[queryThreads];
+            if (queryThreads > 0) {
+                if (config.getWriterThreads() > 0) {
+                    while (globalInserts.get() < queryBeginNumDocs) {
+                        try {
+                            Thread.sleep(100);
+                        } catch (InterruptedException e) {
+                        }
+                    }
+                }
+                globalQueriesStarted.set(System.currentTimeMillis());
+
+                for (int i=0; i<queryThreads; i++) {
+                    tQueryThreads[i] = new Thread(this.new MyQuery(queryThreads, i, mongoDb));
+                    tQueryThreads[i].start();
+                }
+            }
+
+            try {
+                Thread.sleep(10000);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            // wait for reporter thread to terminate
+            if (reporterThread.isAlive())
+                reporterThread.join();
+
+            // wait for queryAndMeasureElapsed thread to terminate
+            for (int i=0; i<queryThreads; i++) {
+                if (tQueryThreads[i].isAlive())
+                    tQueryThreads[i].join();
+            }
+
+            // wait for writer threads to terminate
+            for (int i=0; i<config.getWriterThreads(); i++) {
+                if (tWriterThreads[i].isAlive())
+                    tWriterThreads[i].join();
+            }
+        } finally {
+            mongoDb.disconnect();
+            logMe("Done!");
+            System.exit(0);
         }
-        randomStringHolder = new String(tempString);
+    }
 
-        // create compressible string holder
+    private String createCompressibleStringHolder() {
         logMe("  creating %,d bytes of compressible character data...",compressibleStringLength);
         char[] tempStringCompressible = new char[compressibleStringLength];
         for (int i = 0 ; i < compressibleStringLength ; i++) {
             tempStringCompressible[i] = 'a';
         }
-        compressibleStringHolder = new String(tempStringCompressible);
+        return new String(tempStringCompressible);
+    }
 
-        Thread reporterThread = new Thread(this.new ResultToConsoleReporter(config));
-        reporterThread.start();
-
-        Thread[] tWriterThreads = new Thread[config.getWriterThreads()];
-
-        // start the loaders
-        for (int i=0; i<config.getWriterThreads(); i++) {
-            globalWriterThreads.incrementAndGet();
-            tWriterThreads[i] = new Thread(this.new MyWriter(config.getWriterThreads(), i, config.getMaxRows(), db, maxThreadInsertsPerSecond, config.getNumDocumentsPerInsert()));
-            tWriterThreads[i].start();
+    private String createRandomStringForHolder() {
+        java.util.Random rand = new java.util.Random();
+        logMe("  creating %,d bytes of random character data...",randomStringLength);
+        final char[] tempString = new char[randomStringLength];
+        for (int i = 0 ; i < randomStringLength ; i++) {
+            tempString[i] = (char) (rand.nextInt(26) + 'a');
         }
-
-        // start the query threads
-        Thread[] tQueryThreads = new Thread[queryThreads];
-        if (queryThreads > 0) {
-            if (config.getWriterThreads() > 0) {
-                while (globalInserts.get() < queryBeginNumDocs) {
-                    try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                    }
-                }
-            }
-            globalQueriesStarted.set(System.currentTimeMillis());
-
-            for (int i=0; i<queryThreads; i++) {
-                tQueryThreads[i] = new Thread(this.new MyQuery(queryThreads, i, db));
-                tQueryThreads[i].start();
-            }
-        }
-
-        try {
-            Thread.sleep(10000);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        // wait for reporter thread to terminate
-        if (reporterThread.isAlive())
-            reporterThread.join();
-
-        // wait for query thread to terminate
-        for (int i=0; i<queryThreads; i++) {
-            if (tQueryThreads[i].isAlive())
-                tQueryThreads[i].join();
-        }
-
-        // wait for writer threads to terminate
-        for (int i=0; i<config.getWriterThreads(); i++) {
-            if (tWriterThreads[i].isAlive())
-                tWriterThreads[i].join();
-        }
-
-        try {
-            if (writer != null) {
-                writer.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        // m.dropDatabase("mydb");
-
-        m.close();
-
-        logMe("Done!");
-
-        System.exit(0);
+        return new String(tempString);
     }
 
     private void logSelectedApplicationParameters(final IIbenchConfig config) {
@@ -339,11 +211,11 @@ public class IIbench {
         logMe("--------------------------------------------------");
         logMe("  database name = %s", config.getDbName());
         logMe("  %d writer thread(s)", config.getWriterThreads());
-        logMe("  %d query thread(s)",queryThreads);
+        logMe("  %d queryAndMeasureElapsed thread(s)",queryThreads);
         logMe("  %,d documents per collection",config.getMaxRows());
         logMe("  %d character fields",numCharFields);
         logMe("  %d bytes per character field",lengthCharFields);
-        logMe("  %d secondary indexes",numSecondaryIndexes);
+        logMe("  %d secondary indexes",config.getNumSecondaryIndexes());
         logMe("  Documents Per Insert = %d",config.getNumDocumentsPerInsert());
         logMe("  Maximum of %,d insert(s) per second",maxInsertsPerSecond);
         logMe("  Maximum of %,d insert(s) per second per writer thread",maxThreadInsertsPerSecond);
@@ -353,9 +225,9 @@ public class IIbench {
         logMe("  Run for %,d second(s)",numSeconds);
         logMe("  Extra character fields are %d percent compressible",percentCompressible);
         logMe("  %,d milliseconds between queries", msBetweenQueries);
-        logMe("  Queries limited to %,d document(s) with index direction %,d", queryLimit, queryIndexDirection);
+        logMe("  Queries limited to %,d document(s) with index direction %,d", config.getQueryLimit(), queryIndexDirection);
         logMe("  Starting queries after %,d document(s) inserted",queryBeginNumDocs);
-        logMe("  write concern = %s",myWriteConcern);
+        logMe("  write concern = %s",config.getWriteConcern());
         logMe("  Server:Port = %s:%d",serverName,serverPort);
     }
 
@@ -364,12 +236,16 @@ public class IIbench {
         int threadNumber; 
         int numMaxInserts;
         int maxInsertsPerSecond;
-        DB db;
+        MongoAccessor db;
         
         java.util.Random rand;
         private int documentsPerInsert;
+        private String randomStringForHolder;
+        private String compressibleStringHolder;
+        private IIbenchConfig config;
 
-        MyWriter(int threadCount, int threadNumber, int numMaxInserts, DB db, int maxInsertsPerSecond, int documentsPerInsert) {
+        MyWriter(int threadCount, int threadNumber, int numMaxInserts, MongoAccessor db, int maxInsertsPerSecond, int documentsPerInsert,
+                 final String randomStringForHolder, final String compressibleStringHolder, final IIbenchConfig config) {
             this.threadCount = threadCount;
             this.threadNumber = threadNumber;
             this.numMaxInserts = numMaxInserts;
@@ -377,20 +253,21 @@ public class IIbench {
             this.db = db;
             rand = new java.util.Random((long) threadNumber);
             this.documentsPerInsert = documentsPerInsert;
+            this.randomStringForHolder = randomStringForHolder;
+            this.compressibleStringHolder = compressibleStringHolder;
+            this.config = config;
         }
         public void run() {
-            String collectionName = "purchases_index";
-            DBCollection coll = db.getCollection(collectionName);
+            // String collectionName = "purchases_index";
+            // DBCollection coll = db.getCollection(collectionName);
         
             long numInserts = 0;
             long numLastInserts = 0;
-            int id = 0;
+            //int id = 0;
             long nextMs = System.currentTimeMillis() + 1000;
             
             try {
-                logMe("Writer thread %d : started to load collection %s",threadNumber, collectionName);
-
-                BasicDBObject[] aDocs = new BasicDBObject[documentsPerInsert];
+                logMe("Writer thread %d : started to load collection %s", threadNumber, db.getCollectionName());
                 
                 int numRounds = numMaxInserts / documentsPerInsert;
                 
@@ -408,33 +285,28 @@ public class IIbench {
                         nextMs = System.currentTimeMillis() + 1000;
                     }
 
-                    for (int i = 0; i < documentsPerInsert; i++) {
+                    final List<Map<String, Object>> docs = new ArrayList<>();
+                    for (int i = 0; i < config.getNumDocumentsPerInsert(); i++) {
                         //id++;
-                        int thisCustomerId = rand.nextInt(numCustomers);
-                        double thisPrice= ((rand.nextDouble() * maxPrice) + (double) thisCustomerId) / 100.0;
-                        BasicDBObject doc = new BasicDBObject();
-                        //doc.put("_id",id);
-                        doc.put("dateandtime", System.currentTimeMillis());
-                        doc.put("cashregisterid", rand.nextInt(numCashRegisters));
-                        doc.put("customerid", thisCustomerId);
-                        doc.put("productid", rand.nextInt(numProducts));
-                        doc.put("price", thisPrice);
-                        for (int charField = 1; charField <= numCharFields; charField++) {
-                            int startPosition = rand.nextInt(randomStringLength-lengthCharFields);
-                            doc.put("cf"+Integer.toString(charField), randomStringHolder.substring(startPosition,startPosition+numUncompressibleCharacters) + compressibleStringHolder.substring(startPosition,startPosition+numCompressibleCharacters));
-                        }
-                        aDocs[i]=doc;
+                        final Map<String, Object> map = new HashMap<>();
+                        final int thisCustomerId = rand.nextInt(numCustomers);
+                        map.put("dateandtime", System.currentTimeMillis());
+                        map.put("cashregisterid", rand.nextInt(numCashRegisters));
+                        map.put("customerid", thisCustomerId);
+                        map.put("productid", rand.nextInt(numProducts));
+                        map.put("price", ((rand.nextDouble() * maxPrice) + (double) thisCustomerId) / 100.0);
+                        docs.add(map);
                     }
+                    db.insertDocumentToCollection(docs);
 
                     try {
-                        coll.insert(aDocs);
-                        numInserts += documentsPerInsert;
-                        globalInserts.addAndGet(documentsPerInsert);
-                        
+                        numInserts += config.getNumDocumentsPerInsert();
+                        IIbench.globalInserts.addAndGet(config.getNumDocumentsPerInsert());
+
                     } catch (Exception e) {
-                        logMe("Writer thread %d : EXCEPTION",threadNumber);
+                        //TODO: logMe("Writer thread %d : EXCEPTION",threadNumber);
                         e.printStackTrace();
-                        globalInsertExceptions.incrementAndGet();
+                        IIbench.globalInsertExceptions.incrementAndGet();
                     }
                     
                     if (allDone == 1)
@@ -455,12 +327,12 @@ public class IIbench {
 
     class MyQuery implements Runnable {
         int threadCount; 
-        int threadNumber; 
-        DB db;
+        int threadNumber;
+        MongoAccessor db;
 
         java.util.Random rand;
         
-        MyQuery(int threadCount, int threadNumber, DB db) {
+        MyQuery(int threadCount, int threadNumber, MongoAccessor db) {
             this.threadCount = threadCount;
             this.threadNumber = threadNumber;
             this.db = db;
@@ -468,21 +340,16 @@ public class IIbench {
         }
         public void run() {
             long t0 = System.currentTimeMillis();
-            
-            String collectionName = "purchases_index";
-            
-            DBCollection coll = db.getCollection(collectionName);
+            //String collectionName = "purchases_index";
+            //DBCollection coll = db.getCollection(collectionName);
         
             long numQueriesExecuted = 0;
             long numQueriesTimeMs = 0;
-            
             int whichQuery = 0;
             
             try {
-                logMe("Query thread %d : ready to query collection %s",threadNumber, collectionName);
-
+                logMe("Query thread %d : ready to queryAndMeasureElapsed collection %s",threadNumber, db.getCollectionName());
                 while (allDone == 0) {
-                    
                     // wait until my next runtime
                     if (msBetweenQueries > 0) {
                         try {
@@ -504,97 +371,8 @@ public class IIbench {
                     int thisCashRegisterId = rand.nextInt(numCashRegisters);
                     int thisProductId = rand.nextInt(numProducts);
                     long thisRandomTime = t0 + (long) ((double) (thisNow - t0) * rand.nextDouble());
-                            
-                    BasicDBObject query = new BasicDBObject();
-                    BasicDBObject keys = new BasicDBObject();
 
-                    if (whichQuery == 1) {
-                        BasicDBObject query1a = new BasicDBObject();
-                        query1a.put("price", thisPrice);
-                        query1a.put("dateandtime", thisRandomTime);
-                        query1a.put("customerid", new BasicDBObject("$gte", thisCustomerId));
-                                
-                        BasicDBObject query1b = new BasicDBObject();
-                        query1b.put("price", thisPrice);
-                        query1b.put("dateandtime", new BasicDBObject("$gt", thisRandomTime));
-                        
-                        BasicDBObject query1c = new BasicDBObject();
-                        query1c.put("price", new BasicDBObject("$gt", thisPrice));
-                                
-                        ArrayList<BasicDBObject> list1 = new ArrayList<BasicDBObject>();
-                        list1.add(query1a);
-                        list1.add(query1b);
-                        list1.add(query1c);
-                                
-                        query.put("$or", list1);
-                                
-                        keys.put("price",1);
-                        keys.put("dateandtime",1);
-                        keys.put("customerid",1);
-                        keys.put("_id",0);
-                                
-                    } else if (whichQuery == 2) {
-                        BasicDBObject query2a = new BasicDBObject();
-                        query2a.put("price", thisPrice);
-                        query2a.put("customerid", new BasicDBObject("$gte", thisCustomerId));
-                                
-                        BasicDBObject query2b = new BasicDBObject();
-                        query2b.put("price", new BasicDBObject("$gt", thisPrice));
-                        
-                        ArrayList<BasicDBObject> list2 = new ArrayList<BasicDBObject>();
-                        list2.add(query2a);
-                        list2.add(query2b);
-                                
-                        query.put("$or", list2);
-                        
-                        keys.put("price",1);
-                        keys.put("customerid",1);
-                        keys.put("_id",0);
-                                
-                    } else if (whichQuery == 3) {
-                        BasicDBObject query3a = new BasicDBObject();
-                        query3a.put("cashregisterid", thisCashRegisterId);
-                        query3a.put("price", thisPrice);
-                        query3a.put("customerid", new BasicDBObject("$gte", thisCustomerId));
-                        
-                        BasicDBObject query3b = new BasicDBObject();
-                        query3b.put("cashregisterid", thisCashRegisterId);
-                        query3b.put("price", new BasicDBObject("$gt", thisPrice));
-                        
-                        BasicDBObject query3c = new BasicDBObject();
-                        query3c.put("cashregisterid", new BasicDBObject("$gt", thisCashRegisterId));
-                                
-                        ArrayList<BasicDBObject> list3 = new ArrayList<BasicDBObject>();
-                        list3.add(query3a);
-                        list3.add(query3b);
-                        list3.add(query3c);
-                                
-                        query.put("$or", list3);
-                                
-                        keys.put("cashregisterid",1);
-                        keys.put("price",1);
-                        keys.put("customerid",1);
-                        keys.put("_id",0);
-                    }
-                            
-                    //logMe("Executed query %d",whichQuery);
-                    long now = System.currentTimeMillis();
-                    DBCursor cursor = null;
-                    try {
-                        cursor = coll.find(query,keys).limit(queryLimit);
-                        while(cursor.hasNext()) {
-                            //System.out.println(cursor.next());
-                            cursor.next();
-                        }
-                        cursor.close();
-                        cursor = null;
-                    } catch (Exception e) {
-                        logMe("Query thread %d : EXCEPTION",threadNumber);
-                        e.printStackTrace();
-                        if (cursor != null)
-                          cursor.close();
-                    }
-                    long elapsed = System.currentTimeMillis() - now;
+                    long elapsed = db.queryAndMeasureElapsed(whichQuery, thisPrice, thisCashRegisterId, thisRandomTime, thisCustomerId);
                     
                     //logMe("Query thread %d : performing : %s",threadNumber,thisSelect);
                     
@@ -612,10 +390,12 @@ public class IIbench {
     }
 
     class ResultToConsoleReporter implements Runnable {
-        final IIbenchConfig config;
+        private final IIbenchConfig config;
+        private final Writer writer;
 
-        public ResultToConsoleReporter(final IIbenchConfig config) {
+        public ResultToConsoleReporter(final IIbenchConfig config, final Writer writer) {
             this.config = config;
+            this.writer = writer;
         }
 
         public void run()
@@ -796,10 +576,5 @@ public class IIbench {
             }
             
         }
-    }
-
-
-    public static void logMe(String format, Object... args) {
-        System.out.println(Thread.currentThread() + String.format(format, args));
     }
 }
