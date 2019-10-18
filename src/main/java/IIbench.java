@@ -1,6 +1,7 @@
-package iibench;
-
-import iibench.databases.MongoAccessor;
+import iibench.IIbenchBuilder;
+import iibench.IIbenchConfig;
+import iibench.databases.DBIIBench;
+import iibench.databases.OrientIIBench;
 
 import java.util.*;
 import java.io.BufferedWriter;
@@ -46,8 +47,10 @@ public class IIbench {
     public static int compressibleStringLength =  4*1024*1024;
     
     public static int allDone = 0;
-    
-    public IIbench() {
+    private DBIIBench db;
+
+    public IIbench(DBIIBench db) {
+        this.db = db;
     }
 
     public static void main (String[] args) throws Exception {
@@ -56,15 +59,6 @@ public class IIbench {
         if (props == null) {
             throw new IllegalArgumentException("'iibench.properties' file not found.");
         }
-        final IIbench iib = new IIbench();
-        iib.process(props);
-    }
-
-    public static void logMe(final String format, final Object... args) {
-        System.out.println(Thread.currentThread() + String.format(format, args));
-    }
-
-    private void process(final Properties props) throws Exception {
         final IIbenchConfig config = new IIbenchBuilder().dbName(props.getProperty("DB_NAME"))
                 .writerThreads(Integer.valueOf(props.getProperty("NUM_LOADER_THREADS"))).numMaxInserts(Integer.valueOf(props.getProperty("MAX_ROWS")))
                 .documentsPerInsert(Integer.valueOf(props.getProperty("NUM_DOCUMENTS_PER_INSERT"))).insertsPerFeedback(Integer.valueOf(props.getProperty("NUM_INSERTS_PER_FEEDBACK")))
@@ -73,6 +67,16 @@ public class IIbench {
                 .serverPort(Integer.valueOf(props.getProperty("SERVER_PORT"))).basementSize(Integer.valueOf(props.getProperty("MONGO_BASEMENT")))
                 .numSecondaryIndexes(Integer.valueOf(props.getProperty("NUM_SECONDARY_INDEXES"))).queryLimit(Integer.valueOf(props.getProperty("QUERY_LIMIT"))).build();
 
+        final DBIIBench db = new OrientIIBench(config);
+        final IIbench iib = new IIbench(db);
+        iib.process(props, config);
+    }
+
+    public static void logMe(final String format, final Object... args) {
+        System.out.println(Thread.currentThread() + String.format(format, args));
+    }
+
+    private void process(final Properties props, final IIbenchConfig config) throws Exception {
         // TODO: add to builder
         numSeconds = Long.valueOf(props.getProperty("RUN_SECONDS"));
         queryBeginNumDocs = Integer.valueOf(props.getProperty("QUERY_NUM_DOCS_BEGIN"));
@@ -104,10 +108,8 @@ public class IIbench {
 
         this.logSelectedApplicationParameters(config);
 
-        final MongoAccessor mongoDb = new MongoAccessor(config);
-
-        mongoDb.connect();
-        mongoDb.checkIndexUsed();
+        db.connect();
+        db.checkIndexUsed();
 
         logMe("--------------------------------------------------");
 
@@ -122,8 +124,8 @@ public class IIbench {
         else
         {
             final String collectionName = "purchases_index";
-            mongoDb.createCollection(collectionName);
-            mongoDb.createIndexForCollection();
+            db.createCollection(collectionName);
+            db.createIndexForCollection();
         }
 
         try (final Writer writer = new BufferedWriter(new FileWriter(new File(config.getLogFileName())));) {
@@ -134,7 +136,7 @@ public class IIbench {
             final Thread[] tWriterThreads = new Thread[config.getWriterThreads()];
             for (int i=0; i<config.getWriterThreads(); i++) {
                 globalWriterThreads.incrementAndGet();
-                tWriterThreads[i] = new Thread(this.new MyWriter(config.getWriterThreads(), i, config.getMaxRows(), mongoDb,
+                tWriterThreads[i] = new Thread(this.new MyWriter(config.getWriterThreads(), i, config.getMaxRows(), db,
                         maxThreadInsertsPerSecond, config.getNumDocumentsPerInsert(), createRandomStringForHolder(),
                         createCompressibleStringHolder(), config));
                 tWriterThreads[i].start();
@@ -154,7 +156,7 @@ public class IIbench {
                 globalQueriesStarted.set(System.currentTimeMillis());
 
                 for (int i=0; i<queryThreads; i++) {
-                    tQueryThreads[i] = new Thread(this.new MyQuery(queryThreads, i, mongoDb));
+                    tQueryThreads[i] = new Thread(this.new MyQuery(queryThreads, i, db));
                     tQueryThreads[i].start();
                 }
             }
@@ -181,7 +183,7 @@ public class IIbench {
                     tWriterThreads[i].join();
             }
         } finally {
-            mongoDb.disconnect();
+            db.disconnect();
             logMe("Done!");
             System.exit(0);
         }
@@ -236,7 +238,7 @@ public class IIbench {
         int threadNumber; 
         int numMaxInserts;
         int maxInsertsPerSecond;
-        MongoAccessor db;
+        DBIIBench db;
         
         java.util.Random rand;
         private int documentsPerInsert;
@@ -244,7 +246,7 @@ public class IIbench {
         private String compressibleStringHolder;
         private IIbenchConfig config;
 
-        MyWriter(int threadCount, int threadNumber, int numMaxInserts, MongoAccessor db, int maxInsertsPerSecond, int documentsPerInsert,
+        MyWriter(int threadCount, int threadNumber, int numMaxInserts, DBIIBench db, int maxInsertsPerSecond, int documentsPerInsert,
                  final String randomStringForHolder, final String compressibleStringHolder, final IIbenchConfig config) {
             this.threadCount = threadCount;
             this.threadNumber = threadNumber;
@@ -328,11 +330,11 @@ public class IIbench {
     class MyQuery implements Runnable {
         int threadCount; 
         int threadNumber;
-        MongoAccessor db;
+        DBIIBench db;
 
         java.util.Random rand;
         
-        MyQuery(int threadCount, int threadNumber, MongoAccessor db) {
+        MyQuery(int threadCount, int threadNumber, DBIIBench db) {
             this.threadCount = threadCount;
             this.threadNumber = threadNumber;
             this.db = db;

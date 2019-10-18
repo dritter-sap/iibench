@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class MongoAccessor {
+public class MongoIIBench implements DBIIBench {
     private IIbenchConfig config;
     private WriteConcern myWC;
     private DB db;
@@ -15,7 +15,7 @@ public class MongoAccessor {
     private String indexTechnology;
     private DBCollection coll;
 
-    public MongoAccessor(final IIbenchConfig config) {
+    public MongoIIBench(final IIbenchConfig config) {
         this.config = config;
 
         myWC = new WriteConcern();
@@ -39,6 +39,7 @@ public class MongoAccessor {
         }
     }
 
+    @Override
     public void connect() throws Exception {
         final MongoClientOptions clientOptions = new MongoClientOptions.Builder().connectionsPerHost(2048).socketTimeout(600000).writeConcern(myWC).build();
         final ServerAddress srvrAdd = new ServerAddress(config.getServerName(), config.getServerPort());
@@ -49,10 +50,12 @@ public class MongoAccessor {
         db = client.getDB(config.getDbName());
     }
 
+    @Override
     public void disconnect() {
         this.client.close();
     }
 
+    @Override
     public void checkIndexUsed() {
         // determine server type : mongo or tokumx
         // DBObject checkServerCmd = new BasicDBObject();
@@ -77,6 +80,7 @@ public class MongoAccessor {
         }
     }
 
+    @Override
     public void createCollection(final String name) {
         if (indexTechnology.toLowerCase().equals("tokumx")) {
             DBObject cmd = new BasicDBObject();
@@ -93,6 +97,7 @@ public class MongoAccessor {
         coll = db.getCollection(name);
     }
 
+    @Override
     public void createIndexForCollection() {
         final BasicDBObject idxOptions = new BasicDBObject();
         idxOptions.put("background",false);
@@ -116,10 +121,12 @@ public class MongoAccessor {
         }
     }
 
+    @Override
     public String getCollectionName() {
         return coll.getName();
     }
 
+    @Override
     public void insertDocumentToCollection(final List<Map<String, Object>> docs) {
         final BasicDBObject[] aDocs = new BasicDBObject[config.getNumDocumentsPerInsert()];
         int i = 0;
@@ -129,10 +136,10 @@ public class MongoAccessor {
             aDocs[i]=doc;
             i++;
         }
-
         coll.insert(aDocs);
     }
 
+    @Override
     public long queryAndMeasureElapsed(int whichQuery, double thisPrice, int thisCashRegisterId, long thisRandomTime, int thisCustomerId) {
         BasicDBObject query = new BasicDBObject();
         BasicDBObject keys = new BasicDBObject();
