@@ -7,7 +7,7 @@ iiBench Benchmark for MongoDB and TokuMX
 Requirements
 =====================
 
-* Java 1.6 or 1.7
+* Java 1.8+
 <!---* The MongoDB Java driver must exist and be in the CLASSPATH, as in "export CLASSPATH=/home/tcallaghan/java_goodies/mongo-2.11.4.jar:.". If you don't already have the MongoDB Java driver, then execute the following two commands:
 
 ```bash
