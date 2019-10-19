@@ -50,10 +50,13 @@ public class OrientIIBench implements DBIIBench {
 
   @Override
   public void createCollection(final String name) {
-    // TODO: clustering?
     try (final ODatabaseSession session = pool.acquire()) {
       collection = session.createClass(name);
       collection.createProperty("cashregisterid", OType.INTEGER);
+      collection.createProperty("dateandtime", OType.LONG);
+      collection.createProperty("customerid", OType.INTEGER);
+      collection.createProperty("productid", OType.INTEGER);
+      collection.createProperty("price", OType.DOUBLE);
     }
   }
 
