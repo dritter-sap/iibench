@@ -1,6 +1,7 @@
 import iibench.IIbenchBuilder;
 import iibench.IIbenchConfig;
 import iibench.databases.DBIIBench;
+import iibench.databases.MongoIIBench;
 import iibench.databases.OrientIIBench;
 
 import java.util.*;
