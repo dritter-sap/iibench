@@ -3,6 +3,8 @@ import iibench.IIbenchConfig;
 import iibench.databases.DBIIBench;
 import iibench.databases.MongoIIBench;
 import iibench.databases.OrientIIBench;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.io.BufferedWriter;
@@ -13,44 +15,34 @@ import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class IIbench {
-    public static AtomicLong globalInserts = new AtomicLong(0);
-    public static AtomicLong globalWriterThreads = new AtomicLong(0);
-    public static AtomicLong globalQueryThreads = new AtomicLong(0);
-    public static AtomicLong globalQueriesExecuted = new AtomicLong(0);
-    public static AtomicLong globalQueriesTimeMs = new AtomicLong(0);
-    public static AtomicLong globalQueriesStarted = new AtomicLong(0);
-    public static AtomicLong globalInsertExceptions = new AtomicLong(0);
+    private static final Logger log = LoggerFactory.getLogger(IIbench.class);
 
-    public static boolean outputHeader = true;
+    private static AtomicLong globalInserts = new AtomicLong(0);
+    private static AtomicLong globalWriterThreads = new AtomicLong(0);
+    private static AtomicLong globalQueryThreads = new AtomicLong(0);
+    private static AtomicLong globalQueriesExecuted = new AtomicLong(0);
+    private static AtomicLong globalQueriesTimeMs = new AtomicLong(0);
+    private static AtomicLong globalQueriesStarted = new AtomicLong(0);
+    private static AtomicLong globalInsertExceptions = new AtomicLong(0);
+
+    private static boolean outputHeader = true;
     
-    public static int numCashRegisters = 1000;
-    public static int numProducts = 10000;
-    public static int numCustomers = 100000;
-    public static double maxPrice = 500.0;
+    private static int numCashRegisters = 1000;
+    private static int numProducts = 10000;
+    private static int numCustomers = 100000;
+    private static double maxPrice = 500.0;
 
-    public static int queryThreads;
-    public static Long numSeconds;
-    public static Integer msBetweenQueries;
-    public static Integer queryIndexDirection = 1;
-    public static Integer queryBeginNumDocs;
-    public static Integer maxInsertsPerSecond;
-    public static Integer maxThreadInsertsPerSecond;
-    public static String serverName;
-    public static String createCollection;
-    public static int serverPort;
-    public static int numCharFields;
-    public static int lengthCharFields;
-    public static int percentCompressible;
-    public static int numCompressibleCharacters;
-    public static int numUncompressibleCharacters;
+    private static Integer maxThreadInsertsPerSecond;
+    //private static int numCompressibleCharacters;
+    //private static int numUncompressibleCharacters;
 
-    public static int randomStringLength = 4*1024*1024;
-    public static int compressibleStringLength =  4*1024*1024;
-    
-    public static int allDone = 0;
-    private DBIIBench db;
+    private static int randomStringLength = 4*1024*1024;
+    private static int compressibleStringLength =  4*1024*1024;
+    private static int allDone = 0;
 
-    public IIbench(DBIIBench db) {
+    private final DBIIBench db;
+
+    public IIbench(final DBIIBench db) {
         this.db = db;
     }
 
@@ -60,67 +52,63 @@ public class IIbench {
         if (props == null) {
             throw new IllegalArgumentException("'iibench.properties' file not found.");
         }
-        final IIbenchConfig config = new IIbenchBuilder().dbName(props.getProperty("DB_NAME"))
-                .writerThreads(Integer.valueOf(props.getProperty("NUM_LOADER_THREADS"))).numMaxInserts(Integer.valueOf(props.getProperty("MAX_ROWS")))
-                .documentsPerInsert(Integer.valueOf(props.getProperty("NUM_DOCUMENTS_PER_INSERT"))).insertsPerFeedback(Integer.valueOf(props.getProperty("NUM_INSERTS_PER_FEEDBACK")))
-                .secondsPerFeedback(Integer.valueOf(props.getProperty("NUM_SECONDS_PER_FEEDBACK"))).logFileName(props.getProperty("BENCHMARK_TSV"))
-                .compressionType(props.getProperty("COMPRESSION_TYPE")).writeWriteConcen(props.getProperty("WRITE_CONCERN")).serverName(props.getProperty("SERVER_NAME"))
-                .serverPort(Integer.valueOf(props.getProperty("SERVER_PORT"))).basementSize(Integer.valueOf(props.getProperty("MONGO_BASEMENT")))
-                .numSecondaryIndexes(Integer.valueOf(props.getProperty("NUM_SECONDARY_INDEXES"))).queryLimit(Integer.valueOf(props.getProperty("QUERY_LIMIT"))).build();
-
+        final IIbenchConfig config = loadBenchmarkConfig(props);
         final DBIIBench db = new OrientIIBench(config);
         final IIbench iib = new IIbench(db);
         iib.process(props, config);
     }
 
-    public static void logMe(final String format, final Object... args) {
+    private static IIbenchConfig loadBenchmarkConfig(Properties props) {
+        return new IIbenchBuilder().dbName(props.getProperty("DB_NAME"))
+                .writerThreads(Integer.valueOf(props.getProperty("NUM_LOADER_THREADS")))
+                .numMaxInserts(Integer.valueOf(props.getProperty("MAX_ROWS")))
+                .documentsPerInsert(Integer.valueOf(props.getProperty("NUM_DOCUMENTS_PER_INSERT")))
+                .insertsPerFeedback(Integer.valueOf(props.getProperty("NUM_INSERTS_PER_FEEDBACK")))
+                .secondsPerFeedback(Integer.valueOf(props.getProperty("NUM_SECONDS_PER_FEEDBACK")))
+                .logFileName(props.getProperty("BENCHMARK_TSV"))
+                .compressionType(props.getProperty("COMPRESSION_TYPE"))
+                .writeWriteConcen(props.getProperty("WRITE_CONCERN"))
+                .serverName(props.getProperty("SERVER_NAME"))
+                .serverPort(Integer.valueOf(props.getProperty("SERVER_PORT")))
+                .basementSize(Integer.valueOf(props.getProperty("MONGO_BASEMENT")))
+                .numSecondaryIndexes(Integer.valueOf(props.getProperty("NUM_SECONDARY_INDEXES")))
+                .queryLimit(Integer.valueOf(props.getProperty("QUERY_LIMIT")))
+                .numSeconds(Long.valueOf(props.getProperty("RUN_SECONDS")))
+                .queryBeginNumDocs(Integer.valueOf(props.getProperty("QUERY_NUM_DOCS_BEGIN")))
+                .maxInsertsPerSecond(Integer.valueOf(props.getProperty("MAX_INSERTS_PER_SECOND")))
+                .numCharFields(Integer.valueOf(props.getProperty("NUM_CHAR_FIELDS")))
+                .lengthCharFields(Integer.valueOf(props.getProperty("LENGTH_CHAR_FIELDS")))
+                .percentCompressible(Integer.valueOf(props.getProperty("PERCENT_COMPRESSIBLE")))
+                .createCollection(props.get("CREATE_COLLECTION").toString().toLowerCase())
+                .queryThreads(Integer.valueOf(props.getProperty("QUERY_THREADS")))
+                .msBetweenQueries(Integer.valueOf(props.getProperty("MS_BETWEEN_QUERIES")))
+                .queryIndexDirection(Integer.valueOf(props.getProperty("QUERY_DIRECTION")))
+        .build();
+    }
+
+    public static void logMe(String format, Object... args) {
         System.out.println(Thread.currentThread() + String.format(format, args));
     }
 
     private void process(final Properties props, final IIbenchConfig config) throws Exception {
-        // TODO: add to builder
-        numSeconds = Long.valueOf(props.getProperty("RUN_SECONDS"));
-        queryBeginNumDocs = Integer.valueOf(props.getProperty("QUERY_NUM_DOCS_BEGIN"));
-        maxInsertsPerSecond = Integer.valueOf(props.getProperty("MAX_INSERTS_PER_SECOND"));
-        numCharFields = Integer.valueOf(props.getProperty("NUM_CHAR_FIELDS"));
-        lengthCharFields = Integer.valueOf(props.getProperty("LENGTH_CHAR_FIELDS"));
-        percentCompressible = Integer.valueOf(props.getProperty("PERCENT_COMPRESSIBLE"));
-        createCollection = props.get("CREATE_COLLECTION").toString().toLowerCase();
-        queryThreads = Integer.valueOf(props.getProperty("QUERY_THREADS"));
-        msBetweenQueries = Integer.valueOf(props.getProperty("MS_BETWEEN_QUERIES"));
-        queryIndexDirection = Integer.valueOf(props.getProperty("QUERY_DIRECTION"));
+        maxThreadInsertsPerSecond = (int) ((double) config.getMaxInsertsPerSecond() / (config.getWriterThreads() > 0 ? config.getWriterThreads() : 1));
 
-        // TODO: inline checks to builder
-        if (queryIndexDirection != 1 && queryIndexDirection != -1) {
-            logMe("*** ERROR: queryIndexDirection must be 1 or -1 ***");
-            System.exit(1);
-        }
-
-        maxThreadInsertsPerSecond = (int) ((double)maxInsertsPerSecond / (config.getWriterThreads() > 0 ? config.getWriterThreads() : 1));
-
-        if ((percentCompressible < 0) || (percentCompressible > 100)) {
-            logMe("*** ERROR : INVALID PERCENT COMPRESSIBLE, MUST BE >=0 and <= 100 ***");
-            logMe("  %d secondary indexes is not supported",percentCompressible);
-            System.exit(1);
-        }
-
-        numCompressibleCharacters = (int) (((double) percentCompressible / 100.0) * (double) lengthCharFields);
-        numUncompressibleCharacters = (int) (((100.0 - (double) percentCompressible) / 100.0) * (double) lengthCharFields);
+        // numCompressibleCharacters = (int) (((double) percentCompressible / 100.0) * (double) config.getLengthCharFields());
+        // numUncompressibleCharacters = (int) (((100.0 - (double) percentCompressible) / 100.0) * (double) config.getLengthCharFields());
 
         this.logSelectedApplicationParameters(config);
 
         db.connect();
         db.checkIndexUsed();
 
-        logMe("--------------------------------------------------");
+        log.debug("--------------------------------------------------");
 
         if (config.getWriterThreads() > 1) {
             config.setMaxRows(config.getMaxRows() / config.getWriterThreads());
         }
 
-        if (createCollection.equals("n"))
-        {
-            logMe("Skipping collection creation");
+        if (config.getCreateCollection().equals("n")) {
+            log.debug("Skipping collection creation");
         }
         else
         {
@@ -144,10 +132,10 @@ public class IIbench {
             }
 
             // start the queryAndMeasureElapsed threads
-            Thread[] tQueryThreads = new Thread[queryThreads];
-            if (queryThreads > 0) {
+            Thread[] tQueryThreads = new Thread[config.getQueryThreads()];
+            if (config.getQueryThreads() > 0) {
                 if (config.getWriterThreads() > 0) {
-                    while (globalInserts.get() < queryBeginNumDocs) {
+                    while (globalInserts.get() < config.getQueryNumDocsBegin()) {
                         try {
                             Thread.sleep(100);
                         } catch (InterruptedException e) {
@@ -156,8 +144,8 @@ public class IIbench {
                 }
                 globalQueriesStarted.set(System.currentTimeMillis());
 
-                for (int i=0; i<queryThreads; i++) {
-                    tQueryThreads[i] = new Thread(this.new MyQuery(queryThreads, i, db));
+                for (int i=0; i<config.getQueryThreads(); i++) {
+                    tQueryThreads[i] = new Thread(this.new MyQuery(config.getQueryThreads(), i, db, config.getMsBetweenQueries()));
                     tQueryThreads[i].start();
                 }
             }
@@ -173,7 +161,7 @@ public class IIbench {
                 reporterThread.join();
 
             // wait for queryAndMeasureElapsed thread to terminate
-            for (int i=0; i<queryThreads; i++) {
+            for (int i=0; i<config.getQueryThreads(); i++) {
                 if (tQueryThreads[i].isAlive())
                     tQueryThreads[i].join();
             }
@@ -185,13 +173,13 @@ public class IIbench {
             }
         } finally {
             db.disconnect();
-            logMe("Done!");
+            log.debug("Done!");
             System.exit(0);
         }
     }
 
     private String createCompressibleStringHolder() {
-        logMe("  creating %,d bytes of compressible character data...",compressibleStringLength);
+        log.debug("  creating {} bytes of compressible character data...", compressibleStringLength);
         char[] tempStringCompressible = new char[compressibleStringLength];
         for (int i = 0 ; i < compressibleStringLength ; i++) {
             tempStringCompressible[i] = 'a';
@@ -201,7 +189,7 @@ public class IIbench {
 
     private String createRandomStringForHolder() {
         java.util.Random rand = new java.util.Random();
-        logMe("  creating %,d bytes of random character data...",randomStringLength);
+        log.debug("\tcreating {} bytes of random character data...", randomStringLength);
         final char[] tempString = new char[randomStringLength];
         for (int i = 0 ; i < randomStringLength ; i++) {
             tempString[i] = (char) (rand.nextInt(26) + 'a');
@@ -210,28 +198,28 @@ public class IIbench {
     }
 
     private void logSelectedApplicationParameters(final IIbenchConfig config) {
-        logMe("Application Parameters");
-        logMe("--------------------------------------------------");
-        logMe("  database name = %s", config.getDbName());
-        logMe("  %d writer thread(s)", config.getWriterThreads());
-        logMe("  %d queryAndMeasureElapsed thread(s)",queryThreads);
-        logMe("  %,d documents per collection",config.getMaxRows());
-        logMe("  %d character fields",numCharFields);
-        logMe("  %d bytes per character field",lengthCharFields);
-        logMe("  %d secondary indexes",config.getNumSecondaryIndexes());
-        logMe("  Documents Per Insert = %d",config.getNumDocumentsPerInsert());
-        logMe("  Maximum of %,d insert(s) per second",maxInsertsPerSecond);
-        logMe("  Maximum of %,d insert(s) per second per writer thread",maxThreadInsertsPerSecond);
-        logMe("  Feedback every %,d seconds(s)",config.getNumSecondsPerFeedback());
-        logMe("  Feedback every %,d inserts(s)",config.getNumInsertsPerFeedback());
-        logMe("  logging to file %s",config.getLogFileName());
-        logMe("  Run for %,d second(s)",numSeconds);
-        logMe("  Extra character fields are %d percent compressible",percentCompressible);
-        logMe("  %,d milliseconds between queries", msBetweenQueries);
-        logMe("  Queries limited to %,d document(s) with index direction %,d", config.getQueryLimit(), queryIndexDirection);
-        logMe("  Starting queries after %,d document(s) inserted",queryBeginNumDocs);
-        logMe("  write concern = %s",config.getWriteConcern());
-        logMe("  Server:Port = %s:%d",serverName,serverPort);
+        log.debug("Application Parameters");
+        log.debug("--------------------------------------------------");
+        log.debug("\tdatabase name = {}", config.getDbName());
+        log.debug("\t{} writer thread(s)", config.getWriterThreads());
+        log.debug("\t{} queryAndMeasureElapsed thread(s)", config.getQueryThreads());
+        log.debug("\t{} documents per collection",config.getMaxRows());
+        log.debug("\t{} character fields", config.getNumCharFields());
+        log.debug("\t{} bytes per character field", config.getLengthCharFields());
+        log.debug("\t{} secondary indexes", config.getNumSecondaryIndexes());
+        log.debug("\tDocuments Per Insert = {}", config.getNumDocumentsPerInsert());
+        log.debug("\tMaximum of {} insert(s) per second", config.getMaxInsertsPerSecond());
+        log.debug("\tMaximum of {} insert(s) per second per writer thread", maxThreadInsertsPerSecond);
+        log.debug("\tFeedback every {} seconds(s)", config.getNumSecondsPerFeedback());
+        log.debug("\tFeedback every {} inserts(s)", config.getNumInsertsPerFeedback());
+        log.debug("\tlogging to file {}", config.getLogFileName());
+        log.debug("\tRun for {} second(s)", config.getRunSeconds());
+        log.debug("\tExtra character fields are {} percent compressible", config.getPercentCompressible());
+        log.debug("\t{} milliseconds between queries", config.getMsBetweenQueries());
+        log.debug("\tQueries limited to {} document(s) with index direction {}", config.getQueryLimit(), config.getQueryIndexDirection());
+        log.debug("\tStarting queries after %{} document(s) inserted", config.getQueryNumDocsBegin());
+        log.debug("\twrite concern = {}", config.getWriteConcern());
+        log.debug("\tServer:Port = {}:{}", config.getServerName(), config.getServerPort());
     }
 
     class MyWriter implements Runnable {
@@ -270,7 +258,7 @@ public class IIbench {
             long nextMs = System.currentTimeMillis() + 1000;
             
             try {
-                logMe("Writer thread %d : started to load collection %s", threadNumber, db.getCollectionName());
+                log.debug("Writer thread {} : started to load collection {}", threadNumber, db.getCollectionName());
                 
                 int numRounds = numMaxInserts / documentsPerInsert;
                 
@@ -307,7 +295,7 @@ public class IIbench {
                         IIbench.globalInserts.addAndGet(config.getNumDocumentsPerInsert());
 
                     } catch (Exception e) {
-                        //TODO: logMe("Writer thread %d : EXCEPTION",threadNumber);
+                        //TODO: log.debug("Writer thread {} : EXCEPTION",threadNumber);
                         e.printStackTrace();
                         IIbench.globalInsertExceptions.incrementAndGet();
                     }
@@ -317,7 +305,7 @@ public class IIbench {
                 }
 
             } catch (Exception e) {
-                logMe("Writer thread %d : EXCEPTION",threadNumber);
+                log.debug("Writer thread {} : EXCEPTION",threadNumber);
                 e.printStackTrace();
             }
             
@@ -334,12 +322,14 @@ public class IIbench {
         DBIIBench db;
 
         java.util.Random rand;
-        
-        MyQuery(int threadCount, int threadNumber, DBIIBench db) {
+        private int msBetweenQueries;
+
+        MyQuery(int threadCount, int threadNumber, DBIIBench db, int msBetweenQueries) {
             this.threadCount = threadCount;
             this.threadNumber = threadNumber;
             this.db = db;
             rand = new java.util.Random((long) threadNumber + globalQueriesStarted.get());
+            this.msBetweenQueries = msBetweenQueries;
         }
         public void run() {
             long t0 = System.currentTimeMillis();
@@ -351,7 +341,7 @@ public class IIbench {
             int whichQuery = 0;
             
             try {
-                logMe("Query thread %d : ready to queryAndMeasureElapsed collection %s",threadNumber, db.getCollectionName());
+                log.debug("Query thread {} : ready to queryAndMeasureElapsed collection {}",threadNumber, db.getCollectionName());
                 while (allDone == 0) {
                     // wait until my next runtime
                     if (msBetweenQueries > 0) {
@@ -377,14 +367,14 @@ public class IIbench {
 
                     long elapsed = db.queryAndMeasureElapsed(whichQuery, thisPrice, thisCashRegisterId, thisRandomTime, thisCustomerId);
                     
-                    //logMe("Query thread %d : performing : %s",threadNumber,thisSelect);
+                    //log.debug("Query thread {} : performing : {}",threadNumber,thisSelect);
                     
                     globalQueriesExecuted.incrementAndGet();
                     globalQueriesTimeMs.addAndGet(elapsed);
                 }
 
             } catch (Exception e) {
-                logMe("Query thread %d : EXCEPTION",threadNumber);
+                log.debug("Query thread {} : EXCEPTION",threadNumber);
                 e.printStackTrace();
             }
             
@@ -415,7 +405,7 @@ public class IIbench {
             long thisQueriesNum = 0;
             long thisQueriesMs = 0;
             long thisQueriesStarted = 0;
-            long endDueToTime = System.currentTimeMillis() + (1000 * numSeconds);
+            long endDueToTime = System.currentTimeMillis() + (1000 * config.getRunSeconds());
 
             while (allDone == 0)
             {
@@ -479,8 +469,7 @@ public class IIbench {
                         }
                     }
                     
-                    if (config.getNumSecondsPerFeedback() > 0)
-                    {
+                    if (config.getNumSecondsPerFeedback() > 0) {
                         logMe("%,d inserts : %,d seconds : cum ips=%,.2f : int ips=%,.2f : cum avg qry=%,.2f : int avg qry=%,.2f : cum avg qps=%,.2f : int avg qps=%,.2f : exceptions=%,d", thisInserts, elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS, thisInsertExceptions);
                     } else {
                         logMe("%,d inserts : %,d seconds : cum ips=%,.2f : int ips=%,.2f : cum avg qry=%,.2f : int avg qry=%,.2f : cum avg qps=%,.2f : int avg qps=%,.2f : exceptions=%,d", intervalNumber * config.getNumInsertsPerFeedback(), elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS, thisInsertExceptions);

@@ -2,12 +2,16 @@ package iibench.databases;
 
 import com.mongodb.*;
 import iibench.IIbenchConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 public class MongoIIBench implements DBIIBench {
+  private static final Logger log = LoggerFactory.getLogger(MongoIIBench.class);
+
   private IIbenchConfig config;
   private WriteConcern  myWC;
   private DB            db;
@@ -41,8 +45,8 @@ public class MongoIIBench implements DBIIBench {
     final ServerAddress srvrAdd = new ServerAddress(config.getServerName(), config.getServerPort());
     client = new MongoClient(srvrAdd, clientOptions);
 
-    //TODO: logMe("mongoOptions | " + m.getMongoOptions().toString());
-    //TODO: logMe("mongoWriteConcern | " + m.getWriteConcern().toString());
+    log.debug("mongoOptions | {}.", client.getMongoOptions().toString());
+    log.debug("mongoWriteConcern | {}.", client.getWriteConcern().toString());
     db = client.getDB(config.getDbName());
   }
 
@@ -53,8 +57,6 @@ public class MongoIIBench implements DBIIBench {
 
   @Override
   public void checkIndexUsed() {
-    // determine server type : mongo or tokumx
-    // DBObject checkServerCmd = new BasicDBObject();
     CommandResult commandResult = db.command("buildInfo");
 
     // check if tokumxVersion exists, otherwise assume mongo
@@ -68,23 +70,24 @@ public class MongoIIBench implements DBIIBench {
       throw new IllegalStateException("Unknown Indexing Technology " + indexTechnology + ", shutting down");
     }
 
-    //TODO: logMe("  index technology = %s",indexTechnology);
+    log.debug("  index technology = {}",indexTechnology);
 
     if (indexTechnology.toLowerCase().equals("tokumx")) {
-      //TODO: logMe("  + compression type = %s", config.getCompressionType());
-      //TODO: logMe("  + basement node size (bytes) = %d", config.getBasementSize());
+
+      log.debug("  + compression type = {}", config.getCompressionType());
+      log.debug("  + basement node size (bytes) = {}", config.getBasementSize());
     }
   }
 
   @Override
   public void createCollection(final String name) {
     if (indexTechnology.toLowerCase().equals("tokumx")) {
-      DBObject cmd = new BasicDBObject();
+      final DBObject cmd = new BasicDBObject();
       cmd.put("create", name);
       cmd.put("compression", config.getCompressionType());
       cmd.put("readPageSize", config.getBasementSize());
-      CommandResult result = db.command(cmd);
-      //logMe(result.toString());
+      final CommandResult result = db.command(cmd);
+      log.debug("created collection: {}", result.toString());
     } else if (indexTechnology.toLowerCase().equals("mongo")) {
       // nothing special to do for a regular mongo collection
     } else {
@@ -103,21 +106,8 @@ public class MongoIIBench implements DBIIBench {
       idxOptions.put("compression", config.getCompressionType());
       idxOptions.put("readPageSize", config.getBasementSize());
     }
-
-    coll.createIndex(new BasicDBObject("cashregisterid", 1), idxOptions);
-
-//        if (config.getNumSecondaryIndexes() >= 1) {
-//            //TODO: logMe(" *** creating secondary index on price + customerid");
-//            coll.ensureIndex(new BasicDBObject("price", 1).append("customerid", 1), idxOptions);
-//        }
-//        if (config.getNumSecondaryIndexes() >= 2) {
-//            //TODO: logMe(" *** creating secondary index on cashregisterid + price + customerid");
-//            coll.ensureIndex(new BasicDBObject("cashregisterid", 1).append("price", 1).append("customerid", 1), idxOptions);
-//        }
-//        if (config.getNumSecondaryIndexes() >= 3) {
-//            //TODO: logMe(" *** creating secondary index on price + dateandtime + customerid");
-//            coll.ensureIndex(new BasicDBObject("price", 1).append("dateandtime", 1).append("customerid", 1), idxOptions);
-//        }
+    final BasicDBObject indexedFields = new BasicDBObject("cashregisterid", 1);
+    coll.createIndex(indexedFields, idxOptions);
   }
 
   @Override
@@ -141,23 +131,23 @@ public class MongoIIBench implements DBIIBench {
   @Override
   public long queryAndMeasureElapsed(int whichQuery, double thisPrice, int thisCashRegisterId, long thisRandomTime,
       int thisCustomerId) {
-    BasicDBObject query = new BasicDBObject();
-    BasicDBObject keys = new BasicDBObject();
+    final BasicDBObject query = new BasicDBObject();
+    final BasicDBObject keys = new BasicDBObject();
 
     if (whichQuery == 1) {
-      BasicDBObject query1a = new BasicDBObject();
+      final BasicDBObject query1a = new BasicDBObject();
       query1a.put("price", thisPrice);
       query1a.put("dateandtime", thisRandomTime);
       query1a.put("customerid", new BasicDBObject("$gte", thisCustomerId));
 
-      BasicDBObject query1b = new BasicDBObject();
+      final BasicDBObject query1b = new BasicDBObject();
       query1b.put("price", thisPrice);
       query1b.put("dateandtime", new BasicDBObject("$gt", thisRandomTime));
 
-      BasicDBObject query1c = new BasicDBObject();
+      final BasicDBObject query1c = new BasicDBObject();
       query1c.put("price", new BasicDBObject("$gt", thisPrice));
 
-      ArrayList<BasicDBObject> list1 = new ArrayList<BasicDBObject>();
+      final List<BasicDBObject> list1 = new ArrayList<BasicDBObject>();
       list1.add(query1a);
       list1.add(query1b);
       list1.add(query1c);
@@ -170,14 +160,14 @@ public class MongoIIBench implements DBIIBench {
       keys.put("_id", 0);
 
     } else if (whichQuery == 2) {
-      BasicDBObject query2a = new BasicDBObject();
+      final BasicDBObject query2a = new BasicDBObject();
       query2a.put("price", thisPrice);
       query2a.put("customerid", new BasicDBObject("$gte", thisCustomerId));
 
-      BasicDBObject query2b = new BasicDBObject();
+      final BasicDBObject query2b = new BasicDBObject();
       query2b.put("price", new BasicDBObject("$gt", thisPrice));
 
-      ArrayList<BasicDBObject> list2 = new ArrayList<BasicDBObject>();
+      final List<BasicDBObject> list2 = new ArrayList<BasicDBObject>();
       list2.add(query2a);
       list2.add(query2b);
 
@@ -188,19 +178,19 @@ public class MongoIIBench implements DBIIBench {
       keys.put("_id", 0);
 
     } else if (whichQuery == 3) {
-      BasicDBObject query3a = new BasicDBObject();
+      final BasicDBObject query3a = new BasicDBObject();
       query3a.put("cashregisterid", thisCashRegisterId);
       query3a.put("price", thisPrice);
       query3a.put("customerid", new BasicDBObject("$gte", thisCustomerId));
 
-      BasicDBObject query3b = new BasicDBObject();
+      final BasicDBObject query3b = new BasicDBObject();
       query3b.put("cashregisterid", thisCashRegisterId);
       query3b.put("price", new BasicDBObject("$gt", thisPrice));
 
-      BasicDBObject query3c = new BasicDBObject();
+      final BasicDBObject query3c = new BasicDBObject();
       query3c.put("cashregisterid", new BasicDBObject("$gt", thisCashRegisterId));
 
-      ArrayList<BasicDBObject> list3 = new ArrayList<BasicDBObject>();
+      final List<BasicDBObject> list3 = new ArrayList<BasicDBObject>();
       list3.add(query3a);
       list3.add(query3b);
       list3.add(query3c);
@@ -213,22 +203,16 @@ public class MongoIIBench implements DBIIBench {
       keys.put("_id", 0);
     }
 
-    //logMe("Executed queryAndMeasureElapsed %d",whichQuery);
+    log.debug("Executed queryAndMeasureElapsed {}", whichQuery);
     long now = System.currentTimeMillis();
-    DBCursor cursor = null;
-    try {
-      cursor = coll.find(query, keys).limit(config.getQueryLimit());
+    try(final DBCursor cursor = coll.find(query, keys).limit(config.getQueryLimit())) {
       while (cursor.hasNext()) {
         //System.out.println(cursor.next());
         cursor.next();
       }
-      cursor.close();
-      cursor = null;
-    } catch (Exception e) {
-      //TODO: logMe("Query thread %d : EXCEPTION",threadNumber);
+    } catch (final Exception e) {
+      // log.error("Query thread {} : EXCEPTION", threadNumber);
       e.printStackTrace();
-      if (cursor != null)
-        cursor.close();
     }
     long elapsed = System.currentTimeMillis() - now;
     return elapsed;
