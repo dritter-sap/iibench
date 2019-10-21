@@ -52,6 +52,7 @@ public class MongoIIBench implements DBIIBench {
 
   @Override
   public void disconnect() {
+    this.db.dropDatabase();
     this.client.close();
   }
 

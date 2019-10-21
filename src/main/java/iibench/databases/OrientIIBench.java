@@ -32,15 +32,14 @@ public class OrientIIBench implements DBIIBench {
     poolCfg.addConfig(OGlobalConfiguration.DB_POOL_MAX, 10);
     final OrientDBConfig oriendDBconfig = poolCfg.build();
     orient = new OrientDB("remote:localhost", "root", "root", oriendDBconfig);
-    //TODO: create database during the test
-    orient.create("iibench", ODatabaseType.PLOCAL);
+    orient.create(config.getDbName(), ODatabaseType.PLOCAL);
     pool = new ODatabasePool(orient, this.config.getDbName(), "admin", "admin", oriendDBconfig);
   }
 
   @Override
   public void disconnect() {
     pool.close();
-    orient.drop("test");
+    orient.drop(config.getDbName());
     orient.close();
   }
 

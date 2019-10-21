@@ -1,7 +1,6 @@
 import iibench.IIbenchBuilder;
 import iibench.IIbenchConfig;
 import iibench.databases.DBIIBench;
-import iibench.databases.MongoIIBench;
 import iibench.databases.OrientIIBench;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,10 +31,6 @@ public class IIbench {
     private static int numCustomers = 100000;
     private static double maxPrice = 500.0;
 
-    private static Integer maxThreadInsertsPerSecond;
-    //private static int numCompressibleCharacters;
-    //private static int numUncompressibleCharacters;
-
     private static int randomStringLength = 4*1024*1024;
     private static int compressibleStringLength =  4*1024*1024;
     private static int allDone = 0;
@@ -55,11 +50,11 @@ public class IIbench {
         final IIbenchConfig config = loadBenchmarkConfig(props);
         final DBIIBench db = new OrientIIBench(config);
         final IIbench iib = new IIbench(db);
-        iib.process(props, config);
+        iib.process(config);
     }
 
-    private static IIbenchConfig loadBenchmarkConfig(Properties props) {
-        return new IIbenchBuilder().dbName(props.getProperty("DB_NAME"))
+    private static IIbenchConfig loadBenchmarkConfig(final Properties props) {
+        final IIbenchConfig config = new IIbenchBuilder().dbName(props.getProperty("DB_NAME"))
                 .writerThreads(Integer.valueOf(props.getProperty("NUM_LOADER_THREADS")))
                 .numMaxInserts(Integer.valueOf(props.getProperty("MAX_ROWS")))
                 .documentsPerInsert(Integer.valueOf(props.getProperty("NUM_DOCUMENTS_PER_INSERT")))
@@ -82,99 +77,119 @@ public class IIbench {
                 .createCollection(props.get("CREATE_COLLECTION").toString().toLowerCase())
                 .queryThreads(Integer.valueOf(props.getProperty("QUERY_THREADS")))
                 .msBetweenQueries(Integer.valueOf(props.getProperty("MS_BETWEEN_QUERIES")))
-                .queryIndexDirection(Integer.valueOf(props.getProperty("QUERY_DIRECTION")))
-        .build();
+                .queryIndexDirection(Integer.valueOf(props.getProperty("QUERY_DIRECTION"))).build();
+        config.setMaxThreadInsertsPerSecond((int) ((double) config.getMaxInsertsPerSecond() / (config.getWriterThreads() > 0 ? config.getWriterThreads() : 1)));
+        return config;
     }
 
-    public static void logMe(String format, Object... args) {
+    public static void logMe(final String format, final Object... args) {
         System.out.println(Thread.currentThread() + String.format(format, args));
     }
 
-    private void process(final Properties props, final IIbenchConfig config) throws Exception {
-        maxThreadInsertsPerSecond = (int) ((double) config.getMaxInsertsPerSecond() / (config.getWriterThreads() > 0 ? config.getWriterThreads() : 1));
-
-        // numCompressibleCharacters = (int) (((double) percentCompressible / 100.0) * (double) config.getLengthCharFields());
-        // numUncompressibleCharacters = (int) (((100.0 - (double) percentCompressible) / 100.0) * (double) config.getLengthCharFields());
-
+    private void process(final IIbenchConfig config) throws Exception {
         this.logSelectedApplicationParameters(config);
 
         db.connect();
         db.checkIndexUsed();
 
         log.debug("--------------------------------------------------");
-
         if (config.getWriterThreads() > 1) {
             config.setMaxRows(config.getMaxRows() / config.getWriterThreads());
         }
+        this.createCollectionAndIndex(config);
 
-        if (config.getCreateCollection().equals("n")) {
-            log.debug("Skipping collection creation");
-        }
-        else
-        {
-            final String collectionName = "purchases_index";
-            db.createCollection(collectionName);
-            db.createIndexForCollection();
-        }
+        try (final Writer writer = new BufferedWriter(new FileWriter(new File(db.getClass().getSimpleName()
+                + "-qTs_" + config.getQueryThreads()
+                + "-wTs_" + config.getWriterThreads()
+                + "-qNumDocsBegin_" + config.getQueryNumDocsBegin()
+                + "-"
+                + config.getLogFileName())));) {
+            final Thread reporterThread = startReporterThread(config, writer);
+            final Thread[] writerThreads = startWriterThread(config);
 
-        try (final Writer writer = new BufferedWriter(new FileWriter(new File(config.getLogFileName())));) {
-            final Thread reporterThread = new Thread(this.new ResultToConsoleReporter(config, writer));
-            reporterThread.start();
-
-            // start the loaders
-            final Thread[] tWriterThreads = new Thread[config.getWriterThreads()];
-            for (int i=0; i<config.getWriterThreads(); i++) {
-                globalWriterThreads.incrementAndGet();
-                tWriterThreads[i] = new Thread(this.new MyWriter(config.getWriterThreads(), i, config.getMaxRows(), db,
-                        maxThreadInsertsPerSecond, config.getNumDocumentsPerInsert(), createRandomStringForHolder(),
-                        createCompressibleStringHolder(), config));
-                tWriterThreads[i].start();
+            Thread[] queryThreads = null;
+            if (config.getMaxRows() > config.getQueryNumDocsBegin()) {
+                queryThreads = startQueryThreads(config);
             }
-
-            // start the queryAndMeasureElapsed threads
-            Thread[] tQueryThreads = new Thread[config.getQueryThreads()];
-            if (config.getQueryThreads() > 0) {
-                if (config.getWriterThreads() > 0) {
-                    while (globalInserts.get() < config.getQueryNumDocsBegin()) {
-                        try {
-                            Thread.sleep(100);
-                        } catch (InterruptedException e) {
-                        }
-                    }
-                }
-                globalQueriesStarted.set(System.currentTimeMillis());
-
-                for (int i=0; i<config.getQueryThreads(); i++) {
-                    tQueryThreads[i] = new Thread(this.new MyQuery(config.getQueryThreads(), i, db, config.getMsBetweenQueries()));
-                    tQueryThreads[i].start();
-                }
+            waitForMs(10000);
+            joinThread(reporterThread);
+            if (config.getMaxRows() > config.getQueryNumDocsBegin()) {
+                joinThreads(queryThreads, config.getQueryThreads());
             }
-
-            try {
-                Thread.sleep(10000);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            // wait for reporter thread to terminate
-            if (reporterThread.isAlive())
-                reporterThread.join();
-
-            // wait for queryAndMeasureElapsed thread to terminate
-            for (int i=0; i<config.getQueryThreads(); i++) {
-                if (tQueryThreads[i].isAlive())
-                    tQueryThreads[i].join();
-            }
-
-            // wait for writer threads to terminate
-            for (int i=0; i<config.getWriterThreads(); i++) {
-                if (tWriterThreads[i].isAlive())
-                    tWriterThreads[i].join();
-            }
+            joinThreads(writerThreads, config.getWriterThreads());
         } finally {
             db.disconnect();
             log.debug("Done!");
             System.exit(0);
+        }
+    }
+
+    private void joinThread(final Thread thread) throws InterruptedException {
+        if (thread.isAlive()) {
+            thread.join();
+        }
+    }
+
+    private void joinThreads(final Thread[] threads, final int writerThreads) throws InterruptedException {
+        for (int i = 0; i < writerThreads; i++) {
+            joinThread(threads[i]);
+        }
+    }
+
+    private void waitForMs(int timeToWaitInMs) {
+        try {
+            Thread.sleep(timeToWaitInMs);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private Thread[] startQueryThreads(IIbenchConfig config) {
+        final Thread[] tQueryThreads = new Thread[config.getQueryThreads()];
+        if (config.getQueryThreads() > 0) {
+            if (config.getWriterThreads() > 0) {
+                while (globalInserts.get() < config.getQueryNumDocsBegin()) {
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                    }
+                }
+            }
+            globalQueriesStarted.set(System.currentTimeMillis());
+
+            for (int i=0; i<config.getQueryThreads(); i++) {
+                tQueryThreads[i] = new Thread(this.new MyQuery(config.getQueryThreads(), i, db, config.getMsBetweenQueries()));
+                tQueryThreads[i].start();
+            }
+        }
+        return tQueryThreads;
+    }
+
+    private Thread startReporterThread(final IIbenchConfig config, final Writer writer) {
+        final Thread reporterThread = new Thread(this.new ResultToConsoleReporter(config, writer));
+        reporterThread.start();
+        return reporterThread;
+    }
+
+    private Thread[] startWriterThread(final IIbenchConfig config) {
+        final Thread[] tWriterThreads = new Thread[config.getWriterThreads()];
+        for (int i=0; i<config.getWriterThreads(); i++) {
+            globalWriterThreads.incrementAndGet();
+            tWriterThreads[i] = new Thread(this.new MyWriter(config.getWriterThreads(), i, config.getMaxRows(), db,
+                    config.getMaxThreadInsertsPerSecond(), config.getNumDocumentsPerInsert(), createRandomStringForHolder(),
+                    createCompressibleStringHolder(), config));
+            tWriterThreads[i].start();
+        }
+        return tWriterThreads;
+    }
+
+    private void createCollectionAndIndex(IIbenchConfig config) {
+        if (config.getCreateCollection().equals("n")) {
+            log.debug("Skipping collection creation");
+        } else {
+            final String collectionName = "purchases_index";
+            db.createCollection(collectionName);
+            db.createIndexForCollection();
         }
     }
 
@@ -209,7 +224,7 @@ public class IIbench {
         log.debug("\t{} secondary indexes", config.getNumSecondaryIndexes());
         log.debug("\tDocuments Per Insert = {}", config.getNumDocumentsPerInsert());
         log.debug("\tMaximum of {} insert(s) per second", config.getMaxInsertsPerSecond());
-        log.debug("\tMaximum of {} insert(s) per second per writer thread", maxThreadInsertsPerSecond);
+        log.debug("\tMaximum of {} insert(s) per second per writer thread", config.getMaxThreadInsertsPerSecond());
         log.debug("\tFeedback every {} seconds(s)", config.getNumSecondsPerFeedback());
         log.debug("\tFeedback every {} inserts(s)", config.getNumInsertsPerFeedback());
         log.debug("\tlogging to file {}", config.getLogFileName());
@@ -391,8 +406,7 @@ public class IIbench {
             this.writer = writer;
         }
 
-        public void run()
-        {
+        public void run() {
             long t0 = System.currentTimeMillis();
             long lastInserts = 0;
             long lastQueriesNum = 0;
@@ -407,8 +421,7 @@ public class IIbench {
             long thisQueriesStarted = 0;
             long endDueToTime = System.currentTimeMillis() + (1000 * config.getRunSeconds());
 
-            while (allDone == 0)
-            {
+            while (allDone == 0) {
                 try {
                     Thread.sleep(100);
                 } catch (Exception e) {

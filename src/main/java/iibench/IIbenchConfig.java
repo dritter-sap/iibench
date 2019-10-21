@@ -25,6 +25,7 @@ public class IIbenchConfig {
     private Integer       queryThreads;
     private Integer       msBetweenQueries;
     private Integer       queryIndexDirection;
+    private Integer       maxThreadInsertsPerSecond;
 
     public IIbenchConfig(String dbName, int writerThreads, Integer maxRows, Integer numDocumentsPerInsert,
                          Integer numInsertsPerFeedback, Integer numSecondsPerFeedback, String logFileName,
@@ -57,6 +58,10 @@ public class IIbenchConfig {
         this.queryThreads = queryThreads;
         this.msBetweenQueries = msBetweenQueries;
         this.queryIndexDirection = queryIndexDirection;
+    }
+
+    public void setMaxThreadInsertsPerSecond(final Integer maxThreadInsertsPerSecond) {
+        this.maxThreadInsertsPerSecond = maxThreadInsertsPerSecond;
     }
 
     public String getDbName() {
@@ -157,5 +162,9 @@ public class IIbenchConfig {
 
     public Integer getQueryIndexDirection() {
         return queryIndexDirection;
+    }
+
+    public Integer getMaxThreadInsertsPerSecond() {
+        return maxThreadInsertsPerSecond;
     }
 }
