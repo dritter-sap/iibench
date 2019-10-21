@@ -1,6 +1,7 @@
 import iibench.IIbenchBuilder;
 import iibench.IIbenchConfig;
 import iibench.databases.DBIIBench;
+import iibench.databases.MongoIIBench;
 import iibench.databases.OrientIIBench;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +49,7 @@ public class IIbench {
             throw new IllegalArgumentException("'iibench.properties' file not found.");
         }
         final IIbenchConfig config = loadBenchmarkConfig(props);
-        final DBIIBench db = new OrientIIBench(config);
+        final DBIIBench db = new MongoIIBench(config);
         final IIbench iib = new IIbench(db);
         iib.process(config);
     }
@@ -103,7 +104,7 @@ public class IIbench {
                 + "-wTs_" + config.getWriterThreads()
                 + "-qNumDocsBegin_" + config.getQueryNumDocsBegin()
                 + "-"
-                + config.getLogFileName())));) {
+                + config.getLogFileName())))) {
             final Thread reporterThread = startReporterThread(config, writer);
             final Thread[] writerThreads = startWriterThread(config);
 

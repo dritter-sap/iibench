@@ -5,8 +5,10 @@ import com.orientechnologies.orient.core.db.*;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.OElement;
+import com.orientechnologies.orient.core.sql.executor.OResultSet;
 import iibench.IIbenchConfig;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -15,6 +17,26 @@ import org.slf4j.LoggerFactory;
 
 public class OrientIIBench implements DBIIBench {
   private static final Logger log = LoggerFactory.getLogger(OrientIIBench.class);
+
+  private static final String query1 = "SELECT price, dateandtime, customerid " +
+          "FROM `purchases_index` " +
+          "WHERE price = :price and dateandtime = :dateandtime and customerid >= :customerid " +
+          "OR price > :price and dateandtime = :dateandtime " +
+          "OR price > :price " +
+          "LIMIT :limit";
+
+  private static final String query2 = "SELECT price, customerid " +
+          "FROM `purchases_index` " +
+          "WHERE price = :price and customerid >= :customerid " +
+          "OR price > :price " +
+          "LIMIT :limit";
+
+  private static final String query3 = "SELECT price, dateandtime, customerid " +
+          "FROM `purchases_index` " +
+          "WHERE cashregisterid = :cashregisterid and price = :price and customerid >= :customerid " +
+          "OR cashregisterid = :cashregisterid and price > :price  " +
+          "OR cashregisterid > :cashregisterid " +
+          "LIMIT :limit";
 
   private IIbenchConfig config;
   private OrientDB      orient;
@@ -52,6 +74,9 @@ public class OrientIIBench implements DBIIBench {
   public void createCollection(final String name) {
     try (final ODatabaseSession session = pool.acquire()) {
       collection = session.createClass(name);
+      collection.createProperty("price", OType.DOUBLE);
+      collection.createProperty("dateandtime", OType.LONG);
+      collection.createProperty("customerid", OType.INTEGER);
       collection.createProperty("cashregisterid", OType.INTEGER);
     }
   }
@@ -60,7 +85,7 @@ public class OrientIIBench implements DBIIBench {
   public void createIndexForCollection() {
     try (final ODatabaseSession session = pool.acquire()) {
       session.getClass(collection.getName())
-          .createIndex(collection.getName() + "idx", OClass.INDEX_TYPE.NOTUNIQUE, "cashregisterid");
+          .createIndex(collection.getName() + "idx", OClass.INDEX_TYPE.NOTUNIQUE, "price","dateandtime","customerid","cashregisterid");
     }
   }
 
@@ -84,107 +109,37 @@ public class OrientIIBench implements DBIIBench {
 
   @Override
   public long queryAndMeasureElapsed(int whichQuery, double thisPrice, int thisCashRegisterId, long thisRandomTime,
-      int thisCustomerId) {
-
-    try (final ODatabaseSession session = pool.acquire()) {
-      final String query1a = "SELECT price, dateandtime, customerid FROM %s FORCE INDEX (pdc) " +
-              "WHERE '(price=%.2f and dateandtime=\"%s\" and customerid>=%d) OR '\\\n" +
-              "'(price=%.2f and dateandtime>\"%s\") OR '\\\n" +
-              "'(price>%.2f) LIMIT %d'";
-    }
-
-
-    /*final BasicDBObject query = new BasicDBObject();
-    BasicDBObject keys = new BasicDBObject();
+                                     int thisCustomerId) {
+    final Map<String, Object> params = new HashMap<>();
+    params.put("price", thisPrice);
+    params.put("dateandtime", thisRandomTime);
+    params.put("customerid", thisCustomerId);
+    params.put("cashregisterid", thisCashRegisterId);
+    params.put("limit", config.getQueryLimit());
 
     if (whichQuery == 1) {
-      BasicDBObject query1a = new BasicDBObject();
-      query1a.put("price", thisPrice);
-      query1a.put("dateandtime", thisRandomTime);
-      query1a.put("customerid", new BasicDBObject("$gte", thisCustomerId));
-
-      BasicDBObject query1b = new BasicDBObject();
-      query1b.put("price", thisPrice);
-      query1b.put("dateandtime", new BasicDBObject("$gt", thisRandomTime));
-
-      BasicDBObject query1c = new BasicDBObject();
-      query1c.put("price", new BasicDBObject("$gt", thisPrice));
-
-      ArrayList<BasicDBObject> list1 = new ArrayList<BasicDBObject>();
-      list1.add(query1a);
-      list1.add(query1b);
-      list1.add(query1c);
-
-      query.put("$or", list1);
-
-      keys.put("price", 1);
-      keys.put("dateandtime", 1);
-      keys.put("customerid", 1);
-      keys.put("_id", 0);
-
-    } else if (whichQuery == 2) {
-      BasicDBObject query2a = new BasicDBObject();
-      query2a.put("price", thisPrice);
-      query2a.put("customerid", new BasicDBObject("$gte", thisCustomerId));
-
-      BasicDBObject query2b = new BasicDBObject();
-      query2b.put("price", new BasicDBObject("$gt", thisPrice));
-
-      ArrayList<BasicDBObject> list2 = new ArrayList<BasicDBObject>();
-      list2.add(query2a);
-      list2.add(query2b);
-
-      query.put("$or", list2);
-
-      keys.put("price", 1);
-      keys.put("customerid", 1);
-      keys.put("_id", 0);
-
-    } else if (whichQuery == 3) {
-      BasicDBObject query3a = new BasicDBObject();
-      query3a.put("cashregisterid", thisCashRegisterId);
-      query3a.put("price", thisPrice);
-      query3a.put("customerid", new BasicDBObject("$gte", thisCustomerId));
-
-      BasicDBObject query3b = new BasicDBObject();
-      query3b.put("cashregisterid", thisCashRegisterId);
-      query3b.put("price", new BasicDBObject("$gt", thisPrice));
-
-      BasicDBObject query3c = new BasicDBObject();
-      query3c.put("cashregisterid", new BasicDBObject("$gt", thisCashRegisterId));
-
-      ArrayList<BasicDBObject> list3 = new ArrayList<BasicDBObject>();
-      list3.add(query3a);
-      list3.add(query3b);
-      list3.add(query3c);
-
-      query.put("$or", list3);
-
-      keys.put("cashregisterid", 1);
-      keys.put("price", 1);
-      keys.put("customerid", 1);
-      keys.put("_id", 0);
-    }
-
-    //TODO: logMe("Executed queryAndMeasureElapsed %d",whichQuery);
-    long now = System.currentTimeMillis();
-    DBCursor cursor = null;
-    try {
-      cursor = coll.find(query, keys).limit(config.getQueryLimit());
-      while (cursor.hasNext()) {
-        //System.out.println(cursor.next());
-        cursor.next();
+      long now = System.currentTimeMillis();
+      try (final ODatabaseSession session = pool.acquire(); final OResultSet rs = session.query(query1, params)) {
+        rs.stream().forEach(e -> {});
       }
-      cursor.close();
-      cursor = null;
-    } catch (Exception e) {
-      //TODO: logMe("Query thread %d : EXCEPTION",threadNumber);
-      e.printStackTrace();
-      if (cursor != null)
-        cursor.close();
+      long elapsed = System.currentTimeMillis() - now;
+      return elapsed;
+    } else if (whichQuery == 2) {
+      long now = System.currentTimeMillis();
+      try (final ODatabaseSession session = pool.acquire(); final OResultSet rs = session.query(query2, params)) {
+        rs.stream().forEach(e -> {});
+      }
+      long elapsed = System.currentTimeMillis() - now;
+      return elapsed;
+    } else if (whichQuery == 3) {
+      long now = System.currentTimeMillis();
+      try (final ODatabaseSession session = pool.acquire(); final OResultSet rs = session.query(query3, params)) {
+        rs.stream().forEach(e -> {});
+      }
+      long elapsed = System.currentTimeMillis() - now;
+      return elapsed;
+    } else {
+      throw new IllegalArgumentException("Query " + whichQuery + " unknown. Provide a query from {1,..,3}");
     }
-    long elapsed = System.currentTimeMillis() - now;
-    return elapsed; */
-    return 0;
   }
 }

@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -95,7 +96,6 @@ public class MongoIIBench implements DBIIBench {
       throw new IllegalStateException("Unknown Indexing Technology " + indexTechnology + ", shutting down");
     }
     coll = db.getCollection(name);
-
   }
 
   @Override
@@ -107,7 +107,12 @@ public class MongoIIBench implements DBIIBench {
       idxOptions.put("compression", config.getCompressionType());
       idxOptions.put("readPageSize", config.getBasementSize());
     }
-    final BasicDBObject indexedFields = new BasicDBObject("cashregisterid", 1);
+    final Map<String, Object> keys = new HashMap<>();
+    keys.put("price", 1);
+    keys.put("dateandtime", 1);
+    keys.put("customerid", 1);
+    keys.put("cashregisterid", 1);
+    final BasicDBObject indexedFields = new BasicDBObject(keys);
     coll.createIndex(indexedFields, idxOptions);
   }
 
