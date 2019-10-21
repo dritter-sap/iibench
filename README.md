@@ -1,7 +1,7 @@
 iibench-mongodb
 ===============
 
-iiBench Benchmark for MongoDB and TokuMX
+iiBench Benchmark for MongoDB, TokuMX and OrientDB
 
 
 Requirements
