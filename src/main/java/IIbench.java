@@ -2,6 +2,7 @@ import iibench.IIbenchBuilder;
 import iibench.IIbenchConfig;
 import iibench.databases.DBIIBench;
 import iibench.databases.MongoIIBench;
+import iibench.databases.MongoIIBenchOldAPI;
 import iibench.databases.OrientIIBench;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,9 +50,7 @@ public class IIbench {
             throw new IllegalArgumentException("'iibench.properties' file not found.");
         }
         final IIbenchConfig config = loadBenchmarkConfig(props);
-        final DBIIBench db = new MongoIIBench(config);
-        final IIbench iib = new IIbench(db);
-        iib.process(config);
+        new IIbench(new OrientIIBench(config)).process(config);
     }
 
     private static IIbenchConfig loadBenchmarkConfig(final Properties props) {
@@ -87,7 +86,7 @@ public class IIbench {
         System.out.println(Thread.currentThread() + String.format(format, args));
     }
 
-    private void process(final IIbenchConfig config) throws Exception {
+    public void process(final IIbenchConfig config) throws Exception {
         this.logSelectedApplicationParameters(config);
 
         db.connect();
@@ -121,7 +120,7 @@ public class IIbench {
         } finally {
             db.disconnect();
             log.debug("Done!");
-            System.exit(0);
+            // System.exit(0);
         }
     }
 
@@ -428,7 +427,6 @@ public class IIbench {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                
                 long now = System.currentTimeMillis();
                 
                 if (now >= endDueToTime)
@@ -470,15 +468,12 @@ public class IIbench {
                         thisQueryAvgMs = thisQueriesMs/(double)thisQueriesNum;
                     }
                     
-                    if (thisQueriesStarted > 0)
-                    {
+                    if (thisQueriesStarted > 0) {
                         long adjustedElapsed = now - thisQueriesStarted;
-                        if (adjustedElapsed > 0)
-                        {
+                        if (adjustedElapsed > 0) {
                             thisAvgQPS = (double)thisQueriesNum/((double)adjustedElapsed/1000.0);
                         }
-                        if (thisIntervalMs > 0)
-                        {
+                        if (thisIntervalMs > 0) {
                             thisIntervalAvgQPS = (double)thisIntervalQueriesNum/((double)thisIntervalMs/1000.0);
                         }
                     }
@@ -490,19 +485,22 @@ public class IIbench {
                     }
                     
                     try {
-                        if (outputHeader)
-                        {
+                        if (outputHeader) {
                             writer.write("tot_inserts\telap_secs\tcum_ips\tint_ips\tcum_qry_avg\tint_qry_avg\tcum_qps\tint_qps\texceptions\n");
                             outputHeader = false;
                         }
                             
                         String statusUpdate = "";
                         
-                        if (config.getNumSecondsPerFeedback() > 0)
-                        {
-                            statusUpdate = String.format("%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%,d\n",thisInserts, elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS, thisInsertExceptions);
+                        if (config.getNumSecondsPerFeedback() > 0) {
+                            statusUpdate = String.format("%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%,d\n",thisInserts,
+                                    elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs,
+                                    thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS, thisInsertExceptions);
                         } else {
-                            statusUpdate = String.format("%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%,d\n",intervalNumber * config.getNumInsertsPerFeedback(), elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS, thisInsertExceptions);
+                            statusUpdate = String.format("%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%,d\n",
+                                    intervalNumber * config.getNumInsertsPerFeedback(), elapsed / 1000l,
+                                    thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs,
+                                    thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS, thisInsertExceptions);
                         }
                         writer.write(statusUpdate);
                         writer.flush();
@@ -571,16 +569,20 @@ public class IIbench {
                 String statusUpdate = "";
                 if (config.getNumSecondsPerFeedback() > 0)
                 {
-                    statusUpdate = String.format("%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",thisInserts, elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS);
+                    statusUpdate = String.format("%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",thisInserts,
+                            elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs,
+                            thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS);
                 } else {
-                    statusUpdate = String.format("%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",intervalNumber * config.getNumInsertsPerFeedback(), elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS);
+                    statusUpdate = String.format("%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
+                            intervalNumber * config.getNumInsertsPerFeedback(), elapsed / 1000l, thisInsertsPerSecond,
+                            thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS,
+                            thisIntervalAvgQPS);
                 }
                 writer.write(statusUpdate);
                 writer.flush();
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            
         }
     }
 }
