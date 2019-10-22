@@ -50,7 +50,7 @@ public class IIbench {
             throw new IllegalArgumentException("'iibench.properties' file not found.");
         }
         final IIbenchConfig config = loadBenchmarkConfig(props);
-        new IIbench(new OrientIIBench(config)).process(config);
+        new IIbench(new MongoIIBench(config)).process(config);
     }
 
     private static IIbenchConfig loadBenchmarkConfig(final Properties props) {

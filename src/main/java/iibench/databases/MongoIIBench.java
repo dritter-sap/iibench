@@ -32,7 +32,7 @@ public class MongoIIBench implements DBIIBench {
 
   public MongoIIBench(final IIbenchConfig config) {
     this.config = config;
-    myWC = WriteConcern.ACKNOWLEDGED;
+    myWC = WriteConcern.JOURNALED;
   }
 
   @Override
