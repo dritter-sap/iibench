@@ -1,7 +1,7 @@
 iibench-mongodb
 ===============
 
-iiBench Benchmark for MongoDB, TokuMX and OrientDB
+iiBench Benchmark for MongoDB and OrientDB
 
 
 Requirements
@@ -16,7 +16,7 @@ export CLASSPATH=$PWD/mongo-java-driver-2.11.4.jar:$CLASSPATH
 
 ```
 
-* This example assumes that you already have a MongoDB or TokuMX server running on the same machine as the iiBench client application.
+* This example assumes that you already have a MongoDB server running on the same machine as the iiBench client application.
 * You can connect a different server or port by editing the run.simple.bash script. -->
 
 
