@@ -24,9 +24,9 @@ import java.util.concurrent.TimeUnit;
 public class HDBDocStoreIIBench implements DBIIBench{
     private static final Logger log = LoggerFactory.getLogger(HDBDocStoreIIBench.class);
 
-    private static String connectionString = ""; //?autocommit=false
-    private static String user             = "";
-    private static String password         = "";
+    private static final String connectionString = ""; //?autocommit=false
+    private static final String user             = "";
+    private static final String password         = "";
 
     private final IIbenchConfig config;
     private HikariDataSource ds;
@@ -127,7 +127,135 @@ public class HDBDocStoreIIBench implements DBIIBench{
 
     @Override
     public long queryAndMeasureElapsed(int whichQuery, double thisPrice, int thisCashRegisterId, long thisRandomTime, int thisCustomerId) {
-        return 0;
+        try(final Connection connection = ds.getConnection()) {
+            if (whichQuery == 1) {
+                try(final Statement stmt = connection.createStatement()) {
+                    final String query1 = "SELECT \"price\", \"dateandtime\", \"customerid\" " +
+                            "FROM purchases_index " +
+                            "WHERE \"price\" = " + thisPrice + " and \"dateandtime\" = " + thisRandomTime + " and \"customerid\" >= " + thisCustomerId + " " +
+                            "OR \"price\" > " + thisPrice + " and \"dateandtime\" = " + thisRandomTime + " " +
+                            "OR \"price\" > " + thisPrice + " " +
+                            "LIMIT " + config.getQueryLimit() + ";";
+                    long now = System.currentTimeMillis();
+                    final ResultSet rs = stmt.executeQuery(query1);
+                    while (rs.next()) {
+
+                    }
+                    long elapsed = System.currentTimeMillis() - now;
+                    return elapsed;
+                }
+            } else if (whichQuery == 2) {
+                try(final Statement stmt = connection.createStatement()) {
+                    final String query2 = "SELECT \"price\", \"customerid\" " +
+                            "FROM purchases_index " +
+                            "WHERE \"price\" = " + thisPrice + " and \"customerid\" >= " + thisCustomerId + " " +
+                            "OR \"price\" > " + thisPrice + " " +
+                            "LIMIT " + config.getQueryLimit() + ";";
+                    long now = System.currentTimeMillis();
+                    final ResultSet rs = stmt.executeQuery(query2);
+                    while (rs.next()) {
+
+                    }
+                    long elapsed = System.currentTimeMillis() - now;
+                    return elapsed;
+                }
+            } else if (whichQuery == 3) {
+                try(final Statement stmt = connection.createStatement()) {
+                    final String sql = "SELECT \"price\", \"dateandtime\", \"customerid\" " +
+                            "FROM purchases_index " +
+                            "WHERE \"cashregisterid\" = " + thisCashRegisterId + " and \"price\" = " + thisPrice + " and \"customerid\" >= " + thisCustomerId + " " +
+                            "OR \"cashregisterid\" = " + thisCashRegisterId + " and \"price\" > " + thisPrice + " " +
+                            "OR \"cashregisterid\" > " + thisCashRegisterId + " " +
+                            "LIMIT " + config.getQueryLimit() + ";";
+                    long now = System.currentTimeMillis();
+                    final ResultSet rs = stmt.executeQuery(sql);
+                    while (rs.next()) {
+
+                    }
+                    long elapsed = System.currentTimeMillis() - now;
+                    return elapsed;
+                }
+            } else {
+                throw new IllegalArgumentException("Query " + whichQuery + " unknown. Provide a query from {1,..,3}");
+            }
+        } catch (final SQLException e) {
+            throw new IllegalStateException("Data could not be queried from " + collectionName + ".", e);
+        }
+    }
+
+    @Deprecated
+    private long query1UnsupportedPreparedStatement(double thisPrice, long thisRandomTime, int thisCustomerId, Connection connection) throws SQLException {
+        try(final PreparedStatement prepStmt = connection.prepareStatement("SELECT \"price\", \"dateandtime\", \"customerid\" " +
+                "FROM purchases_index " +
+                "WHERE \"price\" = ? and \"dateandtime\" = ? and \"customerid\" >= ? " +
+                "OR \"price\" > ? and \"dateandtime\" = ? " +
+                "OR \"price\" > ? " +
+                "LIMIT ?;"
+        )) {
+            prepStmt.setDouble(1, thisPrice);
+            prepStmt.setLong(2, thisRandomTime);
+            prepStmt.setInt(3, thisCustomerId);
+            prepStmt.setDouble(4, thisPrice);
+            prepStmt.setLong(5, thisRandomTime);
+            prepStmt.setDouble(6, thisPrice);
+            prepStmt.setDouble(7, config.getQueryLimit());
+
+            long now = System.currentTimeMillis();
+            final ResultSet rs = prepStmt.executeQuery();
+            while (rs.next()) {
+
+            }
+            long elapsed = System.currentTimeMillis() - now;
+            return elapsed;
+        }
+    }
+
+    @Deprecated
+    private long query2UnsupportedPreparedStatement(double thisPrice, int thisCustomerId, Connection connection) throws SQLException {
+        try(final PreparedStatement prepStmt = connection.prepareStatement("SELECT \"price\", \"customerid\" " +
+                "FROM purchases_index " +
+                "WHERE \"price\" = ? and \"customerid\" >= ? " +
+                "OR \"price\" > ? " +
+                "LIMIT ?")) {
+            prepStmt.setDouble(1, thisPrice);
+            prepStmt.setInt(2, thisCustomerId);
+            prepStmt.setDouble(3, thisPrice);
+            prepStmt.setDouble(4, config.getQueryLimit());
+
+            long now = System.currentTimeMillis();
+            final ResultSet rs = prepStmt.executeQuery();
+            while (rs.next()) {
+
+            }
+            long elapsed = System.currentTimeMillis() - now;
+            return elapsed;
+        }
+    }
+
+    @Deprecated
+    private long query3UnsupportedPreparedStatement(double thisPrice, int thisCashRegisterId, int thisCustomerId, Connection connection) throws SQLException {
+        try(final PreparedStatement prepStmt = connection.prepareStatement("SELECT \"price\", \"dateandtime\", \"customerid\" " +
+                "FROM purchases_index " +
+                "WHERE \"cashregisterid\" = ? and \"price\" = ? and \"customerid\" >= ? " +
+                "OR \"cashregisterid\" = ? and \"price\" > ? " +
+                "OR \"cashregisterid\" > ? " +
+                "LIMIT ?;")) {
+            prepStmt.setInt(1, thisCashRegisterId);
+            prepStmt.setDouble(2, thisPrice);
+            prepStmt.setInt(3, thisCustomerId);
+            prepStmt.setInt(4, thisCashRegisterId);
+            prepStmt.setDouble(5, thisPrice);
+            prepStmt.setInt(6, thisCashRegisterId);
+            prepStmt.setDouble(7, config.getQueryLimit());
+
+            long now = System.currentTimeMillis();
+            final ResultSet rs = prepStmt.executeQuery();
+            while (rs.next()) {
+
+            }
+            long elapsed = System.currentTimeMillis() - now;
+            return elapsed;
+        }
     }
 
     private HikariConfig configureConnectionPool() {
