@@ -1,7 +1,12 @@
 iibench-mongodb
 ===============
 
-iiBench Benchmark for MongoDB and OrientDB
+Indexed insertion Benchmark (iiBench) for MongoDB and OrientDB. The original benchmark was developed by Percona (cf. https://github.com/tmcallaghan/iibench-mongodb), however, last updated in 2014.
+
+Contributions:
+* fixed many bugs (e.g., treading problems)
+* ported benchmark to mongodb v3.11.1
+* added a benchmark for orientdb v3.0.24
 
 
 Requirements
