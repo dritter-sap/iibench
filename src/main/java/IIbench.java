@@ -1,9 +1,7 @@
+import com.orientechnologies.orient.core.db.OrientDB;
 import iibench.IIbenchBuilder;
 import iibench.IIbenchConfig;
-import iibench.databases.DBIIBench;
-import iibench.databases.MongoIIBench;
-import iibench.databases.MongoIIBenchOldAPI;
-import iibench.databases.OrientIIBench;
+import iibench.databases.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +48,7 @@ public class IIbench {
             throw new IllegalArgumentException("'iibench.properties' file not found.");
         }
         final IIbenchConfig config = loadBenchmarkConfig(props);
-        new IIbench(new MongoIIBench(config)).process(config);
+        new IIbench(new HDBDocStoreIIBench(config)).process(config);
     }
 
     private static IIbenchConfig loadBenchmarkConfig(final Properties props) {
@@ -101,6 +99,7 @@ public class IIbench {
         try (final Writer writer = new BufferedWriter(new FileWriter(new File(db.getClass().getSimpleName()
                 + "-qTs_" + config.getQueryThreads()
                 + "-wTs_" + config.getWriterThreads()
+                + "-batch_" + config.getNumDocumentsPerInsert()
                 + "-qNumDocsBegin_" + config.getQueryNumDocsBegin()
                 + "-"
                 + config.getLogFileName())))) {
