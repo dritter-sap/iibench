@@ -53,7 +53,7 @@ public class OrientIIBench implements DBIIBench {
     poolCfg.addConfig(OGlobalConfiguration.DB_POOL_MIN, 5);
     poolCfg.addConfig(OGlobalConfiguration.DB_POOL_MAX, 10);
     final OrientDBConfig oriendDBconfig = poolCfg.build();
-    orient = new OrientDB("remote:ld5645", "root", "admin", oriendDBconfig);
+    orient = new OrientDB("remote:localhost", "root", "root", oriendDBconfig);
     orient.create(config.getDbName(), ODatabaseType.PLOCAL);
     pool = new ODatabasePool(orient, this.config.getDbName(), "admin", "admin", oriendDBconfig);
   }

@@ -119,7 +119,6 @@ public class IIbench {
         } finally {
             db.disconnect();
             log.debug("Done!");
-            // System.exit(0);
         }
     }
 
