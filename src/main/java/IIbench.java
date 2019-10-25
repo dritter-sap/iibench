@@ -1,4 +1,6 @@
-import com.orientechnologies.orient.core.db.OrientDB;
+import com.github.rvesse.airline.SingleCommand;
+import com.github.rvesse.airline.annotations.Command;
+import com.github.rvesse.airline.annotations.Option;
 import iibench.IIbenchBuilder;
 import iibench.IIbenchConfig;
 import iibench.databases.*;
@@ -13,42 +15,76 @@ import java.io.Writer;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
 
+@Command(name = "IIBench", description = "Indexed insertion benchmark")
 public class IIbench {
     private static final Logger log = LoggerFactory.getLogger(IIbench.class);
 
-    private static AtomicLong globalInserts = new AtomicLong(0);
-    private static AtomicLong globalWriterThreads = new AtomicLong(0);
-    private static AtomicLong globalQueryThreads = new AtomicLong(0);
-    private static AtomicLong globalQueriesExecuted = new AtomicLong(0);
-    private static AtomicLong globalQueriesTimeMs = new AtomicLong(0);
-    private static AtomicLong globalQueriesStarted = new AtomicLong(0);
+    private static AtomicLong globalInserts          = new AtomicLong(0);
+    private static AtomicLong globalWriterThreads    = new AtomicLong(0);
+    private static AtomicLong globalQueryThreads     = new AtomicLong(0);
+    private static AtomicLong globalQueriesExecuted  = new AtomicLong(0);
+    private static AtomicLong globalQueriesTimeMs    = new AtomicLong(0);
+    private static AtomicLong globalQueriesStarted   = new AtomicLong(0);
     private static AtomicLong globalInsertExceptions = new AtomicLong(0);
 
     private static boolean outputHeader = true;
     
     private static int numCashRegisters = 1000;
-    private static int numProducts = 10000;
-    private static int numCustomers = 100000;
-    private static double maxPrice = 500.0;
+    private static int numProducts      = 10000;
+    private static int numCustomers     = 100000;
+    private static double maxPrice      = 500.0;
 
-    private static int randomStringLength = 4*1024*1024;
+    private static int randomStringLength       = 4*1024*1024;
     private static int compressibleStringLength =  4*1024*1024;
+
     private static int allDone = 0;
 
-    private final DBIIBench db;
+    // private DBIIBench db;
 
-    public IIbench(final DBIIBench db) {
-        this.db = db;
+    @Option(name = { "-user", "--user" }, description = "Database user")
+    private String userName = "";
+
+    @Option(name = { "-password", "--password" }, description = "Database password")
+    private String password = "";
+
+    @Option(name = { "-host", "--host" }, description = "Database host")
+    private String host = "localhost";
+
+    @Option(name = { "-port", "--port" }, description = "Database port")
+    private Integer port = 0;
+
+    public IIbench() {}
+    // public IIbench(final DBIIBench db) {
+    //    this.db = db;
+    //}
+
+    public static void main (String[] args) {
+        final SingleCommand<IIbench> parser = SingleCommand.singleCommand(IIbench.class);
+        final IIbench cmd = parser.parse(args);
+        cmd.run();
     }
 
-    public static void main (String[] args) throws Exception {
+    private void run() {
         final Properties props = new Properties();
-        props.load(IIbench.class.getResourceAsStream("iibench.properties"));
-        if (props == null) {
-            throw new IllegalArgumentException("'iibench.properties' file not found.");
+        try {
+            props.load(IIbench.class.getResourceAsStream("iibench.properties"));
+            if (props == null) {
+                throw new IllegalArgumentException("'iibench.properties' file not found.");
+            }
+            if (!this.host.isEmpty()) {
+                props.setProperty("SERVER_NAME", this.host);
+            }
+            if (this.port != 0) {
+                props.setProperty("SERVER_PORT", String.valueOf(this.port));
+            }
+            final IIbenchConfig config = loadBenchmarkConfig(props);
+            this.process(new HDBDocStoreIIBench(config), config, this.userName, this.password);
+            // new IIbench(new HDBDocStoreIIBench(config)).process(config);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        final IIbenchConfig config = loadBenchmarkConfig(props);
-        new IIbench(new HDBDocStoreIIBench(config)).process(config);
     }
 
     private static IIbenchConfig loadBenchmarkConfig(final Properties props) {
@@ -84,17 +120,18 @@ public class IIbench {
         System.out.println(Thread.currentThread() + String.format(format, args));
     }
 
-    public void process(final IIbenchConfig config) throws Exception {
+    public void process(final HDBDocStoreIIBench db, final IIbenchConfig config,
+                        final String userName, final String password) throws Exception {
         this.logSelectedApplicationParameters(config);
 
-        db.connect();
+        db.connect(userName, password);
         db.checkIndexUsed();
 
         log.debug("--------------------------------------------------");
         if (config.getWriterThreads() > 1) {
             config.setMaxRows(config.getMaxRows() / config.getWriterThreads());
         }
-        this.createCollectionAndIndex(config);
+        this.createCollectionAndIndex(config, db);
 
         try (final Writer writer = new BufferedWriter(new FileWriter(new File(db.getClass().getSimpleName()
                 + "-qTs_" + config.getQueryThreads()
@@ -104,11 +141,11 @@ public class IIbench {
                 + "-"
                 + config.getLogFileName())))) {
             final Thread reporterThread = startReporterThread(config, writer);
-            final Thread[] writerThreads = startWriterThread(config);
+            final Thread[] writerThreads = startWriterThread(config, db);
 
             Thread[] queryThreads = null;
             if (config.getMaxRows() > config.getQueryNumDocsBegin()) {
-                queryThreads = startQueryThreads(config);
+                queryThreads = startQueryThreads(config, db);
             }
             waitForMs(10000);
             joinThread(reporterThread);
@@ -142,7 +179,8 @@ public class IIbench {
         }
     }
 
-    private Thread[] startQueryThreads(IIbenchConfig config) {
+    private Thread[] startQueryThreads(final IIbenchConfig config,
+                                       final DBIIBench db) {
         final Thread[] tQueryThreads = new Thread[config.getQueryThreads()];
         if (config.getQueryThreads() > 0) {
             if (config.getWriterThreads() > 0) {
@@ -169,7 +207,7 @@ public class IIbench {
         return reporterThread;
     }
 
-    private Thread[] startWriterThread(final IIbenchConfig config) {
+    private Thread[] startWriterThread(final IIbenchConfig config, final DBIIBench db) {
         final Thread[] tWriterThreads = new Thread[config.getWriterThreads()];
         for (int i=0; i<config.getWriterThreads(); i++) {
             globalWriterThreads.incrementAndGet();
@@ -181,7 +219,8 @@ public class IIbench {
         return tWriterThreads;
     }
 
-    private void createCollectionAndIndex(IIbenchConfig config) {
+    private void createCollectionAndIndex(final IIbenchConfig config,
+                                          final DBIIBench db) {
         if (config.getCreateCollection().equals("n")) {
             log.debug("Skipping collection creation");
         } else {

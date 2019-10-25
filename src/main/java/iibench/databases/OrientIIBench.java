@@ -48,7 +48,7 @@ public class OrientIIBench implements DBIIBench {
   }
 
   @Override
-  public void connect() throws Exception {
+  public void connect(final String userName, final String password) throws Exception {
     final OrientDBConfigBuilder poolCfg = OrientDBConfig.builder();
     poolCfg.addConfig(OGlobalConfiguration.DB_POOL_MIN, 5);
     poolCfg.addConfig(OGlobalConfiguration.DB_POOL_MAX, 10);

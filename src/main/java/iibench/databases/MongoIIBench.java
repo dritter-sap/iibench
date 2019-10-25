@@ -36,7 +36,7 @@ public class MongoIIBench implements DBIIBench {
   }
 
   @Override
-  public void connect() throws Exception {
+  public void connect(final String userName, final String password) throws Exception {
     final MongoClientOptions clientOptions = new MongoClientOptions.Builder().connectionsPerHost(2048).socketTimeout(600000)
         .writeConcern(myWC).build();
     final ServerAddress srvrAdd = new ServerAddress(config.getServerName(), config.getServerPort());

@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface DBIIBench {
-    void connect() throws Exception;
+    void connect(String userName, String password) throws Exception;
 
     void disconnect();
 

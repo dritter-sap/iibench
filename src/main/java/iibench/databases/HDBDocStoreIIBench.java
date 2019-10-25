@@ -11,22 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-/**
- * CREATE COLLECTION purchases_index;
- * select * from m_collection_tables;
- * CREATE INDEX iibench_idx ON purchases_index (a,b);
- * DROP INDEX iibench_idx;
- * select count(*) from purchases_index;
- * select * from purchase_index;
- * drop collection purchases_index;
- */
-
 public class HDBDocStoreIIBench implements DBIIBench{
     private static final Logger log = LoggerFactory.getLogger(HDBDocStoreIIBench.class);
-
-    private static final String connectionString = ""; //?autocommit=false
-    private static final String user             = "";
-    private static final String password         = "";
 
     private final IIbenchConfig config;
     private HikariDataSource ds;
@@ -37,13 +23,14 @@ public class HDBDocStoreIIBench implements DBIIBench{
     }
 
     @Override
-    public void connect() throws Exception {
-        final HikariConfig config = configureConnectionPool();
-        ds = new HikariDataSource(config);
+    public void connect(final String userName, final String password) throws Exception {
+        final HikariConfig poolConfig = configureConnectionPool(config.getServerName(), config.getServerPort(), userName, password);
+        ds = new HikariDataSource(poolConfig);
 
         try(final Connection connection = ds.getConnection()) { // DriverManager.getConnection(connectionString, user, password)
             if (connection == null) {
-                throw new IllegalStateException("Could not connect to " + connectionString);
+                throw new IllegalStateException("Could not connect to " + config.getServerName()
+                + ":" + config.getServerPort());
             }
         }
     }
@@ -258,17 +245,17 @@ public class HDBDocStoreIIBench implements DBIIBench{
         }
     }
 
-    private HikariConfig configureConnectionPool() {
-        final HikariConfig config = new HikariConfig();
-        config.setMinimumIdle(3);
-        config.setMaximumPoolSize(10);
-        config.setConnectionTimeout(3000);
-        config.setIdleTimeout(TimeUnit.SECONDS.toMillis(10));
-        config.setValidationTimeout(TimeUnit.SECONDS.toMillis(2));
+    private HikariConfig configureConnectionPool(final String host, final Integer port, final String userNAme, final String password) {
+        final HikariConfig poolConfig = new HikariConfig();
+        poolConfig.setMinimumIdle(3);
+        poolConfig.setMaximumPoolSize(10);
+        poolConfig.setConnectionTimeout(3000);
+        poolConfig.setIdleTimeout(TimeUnit.SECONDS.toMillis(10));
+        poolConfig.setValidationTimeout(TimeUnit.SECONDS.toMillis(2));
 
-        config.setJdbcUrl(connectionString);
-        config.setUsername(user);
-        config.setPassword(password);
-        return config;
+        poolConfig.setJdbcUrl("jdbc:sap://" + host + ":" + port + "/");
+        poolConfig.setUsername(userNAme);
+        poolConfig.setPassword(password);
+        return poolConfig;
     }
 }
