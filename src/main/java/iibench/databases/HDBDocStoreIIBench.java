@@ -2,7 +2,7 @@ package iibench.databases;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import iibench.IIbenchConfig;
+import iibench.DBIIBench;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,32 +11,30 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public class HDBDocStoreIIBench implements DBIIBench{
+public class HDBDocStoreIIBench implements DBIIBench {
     private static final Logger log = LoggerFactory.getLogger(HDBDocStoreIIBench.class);
 
-    private final IIbenchConfig config;
     private HikariDataSource ds;
     private String collectionName;
 
-    public HDBDocStoreIIBench(IIbenchConfig config) {
-        this.config = config;
+    public HDBDocStoreIIBench() {
     }
 
     @Override
-    public void connect(final String userName, final String password) throws Exception {
-        final HikariConfig poolConfig = configureConnectionPool(config.getServerName(), config.getServerPort(), userName, password);
+    public void connect(final String serverName, final Integer serverPort, final String dbName, final String userName, final String password) throws Exception {
+        final HikariConfig poolConfig = configureConnectionPool(serverName, serverPort, userName, password);
         ds = new HikariDataSource(poolConfig);
 
         try(final Connection connection = ds.getConnection()) { // DriverManager.getConnection(connectionString, user, password)
             if (connection == null) {
-                throw new IllegalStateException("Could not connect to " + config.getServerName()
-                + ":" + config.getServerPort());
+                throw new IllegalStateException("Could not connect to " + serverName
+                + ":" + serverPort);
             }
         }
     }
 
     @Override
-    public void disconnect() {
+    public void disconnect(final String dbName) {
         try(final Connection connection = ds.getConnection(); final Statement stmt = connection.createStatement()) {
             stmt.execute("DROP COLLECTION " + collectionName + ";");
         } catch (final SQLException e) {
@@ -79,7 +77,7 @@ public class HDBDocStoreIIBench implements DBIIBench{
     }
 
     @Override
-    public void insertDocumentToCollection(final List<Map<String, Object>> docs) {
+    public void insertDocumentToCollection(final List<Map<String, Object>> docs, final int numDocumentsPerInsert) {
         insertPreparedBatch(docs);
     }
 
@@ -113,7 +111,8 @@ public class HDBDocStoreIIBench implements DBIIBench{
     }
 
     @Override
-    public long queryAndMeasureElapsed(int whichQuery, double thisPrice, int thisCashRegisterId, long thisRandomTime, int thisCustomerId) {
+    public long queryAndMeasureElapsed(int whichQuery, double thisPrice, int thisCashRegisterId, long thisRandomTime,
+                                       int thisCustomerId, final int queryLimit) {
         try(final Connection connection = ds.getConnection()) {
             if (whichQuery == 1) {
                 try(final Statement stmt = connection.createStatement()) {
@@ -122,7 +121,7 @@ public class HDBDocStoreIIBench implements DBIIBench{
                             "WHERE \"price\" = " + thisPrice + " and \"dateandtime\" = " + thisRandomTime + " and \"customerid\" >= " + thisCustomerId + " " +
                             "OR \"price\" > " + thisPrice + " and \"dateandtime\" = " + thisRandomTime + " " +
                             "OR \"price\" > " + thisPrice + " " +
-                            "LIMIT " + config.getQueryLimit() + ";";
+                            "LIMIT " + queryLimit + ";";
                     long now = System.currentTimeMillis();
                     final ResultSet rs = stmt.executeQuery(query1);
                     while (rs.next()) {
@@ -137,7 +136,7 @@ public class HDBDocStoreIIBench implements DBIIBench{
                             "FROM purchases_index " +
                             "WHERE \"price\" = " + thisPrice + " and \"customerid\" >= " + thisCustomerId + " " +
                             "OR \"price\" > " + thisPrice + " " +
-                            "LIMIT " + config.getQueryLimit() + ";";
+                            "LIMIT " + queryLimit + ";";
                     long now = System.currentTimeMillis();
                     final ResultSet rs = stmt.executeQuery(query2);
                     while (rs.next()) {
@@ -153,7 +152,7 @@ public class HDBDocStoreIIBench implements DBIIBench{
                             "WHERE \"cashregisterid\" = " + thisCashRegisterId + " and \"price\" = " + thisPrice + " and \"customerid\" >= " + thisCustomerId + " " +
                             "OR \"cashregisterid\" = " + thisCashRegisterId + " and \"price\" > " + thisPrice + " " +
                             "OR \"cashregisterid\" > " + thisCashRegisterId + " " +
-                            "LIMIT " + config.getQueryLimit() + ";";
+                            "LIMIT " + queryLimit + ";";
                     long now = System.currentTimeMillis();
                     final ResultSet rs = stmt.executeQuery(sql);
                     while (rs.next()) {
@@ -171,7 +170,7 @@ public class HDBDocStoreIIBench implements DBIIBench{
     }
 
     @Deprecated
-    private long query1UnsupportedPreparedStatement(double thisPrice, long thisRandomTime, int thisCustomerId, Connection connection) throws SQLException {
+    private long query1UnsupportedPreparedStatement(double thisPrice, long thisRandomTime, int thisCustomerId, Connection connection, final int queryLimit) throws SQLException {
         try(final PreparedStatement prepStmt = connection.prepareStatement("SELECT \"price\", \"dateandtime\", \"customerid\" " +
                 "FROM purchases_index " +
                 "WHERE \"price\" = ? and \"dateandtime\" = ? and \"customerid\" >= ? " +
@@ -185,7 +184,7 @@ public class HDBDocStoreIIBench implements DBIIBench{
             prepStmt.setDouble(4, thisPrice);
             prepStmt.setLong(5, thisRandomTime);
             prepStmt.setDouble(6, thisPrice);
-            prepStmt.setDouble(7, config.getQueryLimit());
+            prepStmt.setDouble(7, queryLimit);
 
             long now = System.currentTimeMillis();
             final ResultSet rs = prepStmt.executeQuery();
@@ -198,7 +197,7 @@ public class HDBDocStoreIIBench implements DBIIBench{
     }
 
     @Deprecated
-    private long query2UnsupportedPreparedStatement(double thisPrice, int thisCustomerId, Connection connection) throws SQLException {
+    private long query2UnsupportedPreparedStatement(double thisPrice, int thisCustomerId, Connection connection, final int queryLimit) throws SQLException {
         try(final PreparedStatement prepStmt = connection.prepareStatement("SELECT \"price\", \"customerid\" " +
                 "FROM purchases_index " +
                 "WHERE \"price\" = ? and \"customerid\" >= ? " +
@@ -207,7 +206,7 @@ public class HDBDocStoreIIBench implements DBIIBench{
             prepStmt.setDouble(1, thisPrice);
             prepStmt.setInt(2, thisCustomerId);
             prepStmt.setDouble(3, thisPrice);
-            prepStmt.setDouble(4, config.getQueryLimit());
+            prepStmt.setDouble(4, queryLimit);
 
             long now = System.currentTimeMillis();
             final ResultSet rs = prepStmt.executeQuery();
@@ -220,7 +219,7 @@ public class HDBDocStoreIIBench implements DBIIBench{
     }
 
     @Deprecated
-    private long query3UnsupportedPreparedStatement(double thisPrice, int thisCashRegisterId, int thisCustomerId, Connection connection) throws SQLException {
+    private long query3UnsupportedPreparedStatement(double thisPrice, int thisCashRegisterId, int thisCustomerId, Connection connection, final int queryLimit) throws SQLException {
         try(final PreparedStatement prepStmt = connection.prepareStatement("SELECT \"price\", \"dateandtime\", \"customerid\" " +
                 "FROM purchases_index " +
                 "WHERE \"cashregisterid\" = ? and \"price\" = ? and \"customerid\" >= ? " +
@@ -233,7 +232,7 @@ public class HDBDocStoreIIBench implements DBIIBench{
             prepStmt.setInt(4, thisCashRegisterId);
             prepStmt.setDouble(5, thisPrice);
             prepStmt.setInt(6, thisCashRegisterId);
-            prepStmt.setDouble(7, config.getQueryLimit());
+            prepStmt.setDouble(7, queryLimit);
 
             long now = System.currentTimeMillis();
             final ResultSet rs = prepStmt.executeQuery();

@@ -6,7 +6,7 @@ import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.OElement;
 import com.orientechnologies.orient.core.sql.executor.OResultSet;
-import iibench.IIbenchConfig;
+import iibench.DBIIBench;
 
 import java.util.HashMap;
 import java.util.List;
@@ -38,30 +38,28 @@ public class OrientIIBench implements DBIIBench {
           "OR cashregisterid > :cashregisterid " +
           "LIMIT :limit";
 
-  private IIbenchConfig config;
   private OrientDB      orient;
   private ODatabasePool pool; //pool not thread-safe
   private OClass        collection;
 
-  public OrientIIBench(final IIbenchConfig config) {
-    this.config = config;
+  public OrientIIBench() {
   }
 
   @Override
-  public void connect(final String userName, final String password) throws Exception {
+  public void connect(final String serverName, final Integer serverPort, final String dbName, final String userName, final String password) throws Exception {
     final OrientDBConfigBuilder poolCfg = OrientDBConfig.builder();
     poolCfg.addConfig(OGlobalConfiguration.DB_POOL_MIN, 5);
     poolCfg.addConfig(OGlobalConfiguration.DB_POOL_MAX, 10);
     final OrientDBConfig oriendDBconfig = poolCfg.build();
-    orient = new OrientDB("remote:localhost", "root", "root", oriendDBconfig);
-    orient.create(config.getDbName(), ODatabaseType.PLOCAL);
-    pool = new ODatabasePool(orient, this.config.getDbName(), "admin", "admin", oriendDBconfig);
+    orient = new OrientDB("remote:localhost", userName, password, oriendDBconfig);
+    orient.create(dbName, ODatabaseType.PLOCAL);
+    pool = new ODatabasePool(orient, dbName, "admin", "admin", oriendDBconfig);
   }
 
   @Override
-  public void disconnect() {
+  public void disconnect(final String dbName) {
     pool.close();
-    orient.drop(config.getDbName());
+    orient.drop(dbName);
     orient.close();
   }
 
@@ -95,7 +93,7 @@ public class OrientIIBench implements DBIIBench {
   }
 
   @Override
-  public void insertDocumentToCollection(final List<Map<String, Object>> docs) {
+  public void insertDocumentToCollection(final List<Map<String, Object>> docs, final int numDocumentsPerInsert) {
     try (final ODatabaseSession session = pool.acquire()) {
       session.begin();
       for (final Map<String, Object> data : docs) {
@@ -109,13 +107,13 @@ public class OrientIIBench implements DBIIBench {
 
   @Override
   public long queryAndMeasureElapsed(int whichQuery, double thisPrice, int thisCashRegisterId, long thisRandomTime,
-                                     int thisCustomerId) {
+                                     int thisCustomerId, final int queryLimit) {
     final Map<String, Object> params = new HashMap<>();
     params.put("price", thisPrice);
     params.put("dateandtime", thisRandomTime);
     params.put("customerid", thisCustomerId);
     params.put("cashregisterid", thisCashRegisterId);
-    params.put("limit", config.getQueryLimit());
+    params.put("limit", queryLimit);
 
     if (whichQuery == 1) {
       long now = System.currentTimeMillis();

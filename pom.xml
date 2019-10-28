@@ -86,7 +86,7 @@
                             <keepDependenciesWithProvidedScope>false</keepDependenciesWithProvidedScope>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>iibench.IIbench</mainClass>
+                                    <mainClass>IIbench</mainClass>
                                 </transformer>
                             </transformers>
 
@@ -102,6 +102,41 @@
                             </filters>-->
                         </configuration>
                     </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>com.github.rvesse</groupId>
+                <artifactId>airline-maven-plugin</artifactId>
+                <version>2.7.2</version>
+                <configuration>
+                    <formats>
+                        <format>MAN</format>
+                        <format>CLI</format>
+                        <format>MARKDOWN</format>
+                    </formats>
+                    <sources>
+                        <!-- Separate source elements rather than multiple class under a single source element -->
+                        <source>
+                            <classes>
+                                <class>IIBench</class>
+                            </classes>
+                        </source>
+                    </sources>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>validate</goal>
+                        </goals>
+                    </execution>
+                    <!--<execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <phase>package</phase>
+                    </execution>-->
                 </executions>
             </plugin>
         </plugins>

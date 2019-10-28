@@ -1,7 +1,7 @@
 package iibench.databases;
 
 import com.mongodb.*;
-import iibench.IIbenchConfig;
+import iibench.DBIIBench;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,16 +13,13 @@ import java.util.Map;
 public class MongoIIBenchOldAPI implements DBIIBench {
     private static final Logger log = LoggerFactory.getLogger(MongoIIBench.class);
 
-    private IIbenchConfig config;
     private WriteConcern  myWC;
     private DB            db;
     private MongoClient   client;
     private String        indexTechnology;
     private DBCollection  coll;
 
-    public MongoIIBenchOldAPI(final IIbenchConfig config) {
-        this.config = config;
-
+    public MongoIIBenchOldAPI() {
         myWC = WriteConcern.JOURNALED;
 //    if (config.getWriteConcern().toLowerCase().equals("fsync_safe")) {
 //      myWC = WriteConcern.FSYNC_SAFE;
@@ -40,19 +37,19 @@ public class MongoIIBenchOldAPI implements DBIIBench {
     }
 
     @Override
-    public void connect(final String userName, final String password) throws Exception {
+    public void connect(final String serverName, final Integer serverPort, final String dbName, final String userName, final String password) throws Exception {
         final MongoClientOptions clientOptions = new MongoClientOptions.Builder().connectionsPerHost(2048).socketTimeout(600000)
                 .writeConcern(myWC).build();
-        final ServerAddress srvrAdd = new ServerAddress(config.getServerName(), config.getServerPort());
+        final ServerAddress srvrAdd = new ServerAddress(serverName, serverPort);
         client = new MongoClient(srvrAdd, clientOptions);
 
         log.debug("mongoOptions | {}.", client.getMongoOptions().toString());
         log.debug("mongoWriteConcern | {}.", client.getWriteConcern().toString());
-        db = client.getDB(config.getDbName());
+        db = client.getDB(dbName);
     }
 
     @Override
-    public void disconnect() {
+    public void disconnect(final String dbName) {
         this.db.dropDatabase();
         this.client.close();
     }
@@ -76,8 +73,8 @@ public class MongoIIBenchOldAPI implements DBIIBench {
 
         if (indexTechnology.toLowerCase().equals("tokumx")) {
 
-            log.debug("  + compression type = {}", config.getCompressionType());
-            log.debug("  + basement node size (bytes) = {}", config.getBasementSize());
+            log.debug("  + compression type = {}", "zlib");
+            log.debug("  + basement node size (bytes) = {}", 65536);
         }
     }
 
@@ -86,8 +83,8 @@ public class MongoIIBenchOldAPI implements DBIIBench {
         if (indexTechnology.toLowerCase().equals("tokumx")) {
             final DBObject cmd = new BasicDBObject();
             cmd.put("create", name);
-            cmd.put("compression", config.getCompressionType());
-            cmd.put("readPageSize", config.getBasementSize());
+            cmd.put("compression", "zlib");
+            cmd.put("readPageSize", 65536);
             final CommandResult result = db.command(cmd);
             log.debug("created collection: {}", result.toString());
         } else if (indexTechnology.toLowerCase().equals("mongo")) {
@@ -104,8 +101,8 @@ public class MongoIIBenchOldAPI implements DBIIBench {
         idxOptions.put("background", false);
 
         if (indexTechnology.toLowerCase().equals("tokumx")) {
-            idxOptions.put("compression", config.getCompressionType());
-            idxOptions.put("readPageSize", config.getBasementSize());
+            idxOptions.put("compression", "zlib");
+            idxOptions.put("readPageSize", 65536);
         }
         final Map<String, Object> keys = new HashMap<>();
         keys.put("price", 1);
@@ -122,8 +119,8 @@ public class MongoIIBenchOldAPI implements DBIIBench {
     }
 
     @Override
-    public void insertDocumentToCollection(final List<Map<String, Object>> docs) {
-        final BasicDBObject[] aDocs = new BasicDBObject[config.getNumDocumentsPerInsert()];
+    public void insertDocumentToCollection(final List<Map<String, Object>> docs, final int numDocumentsPerInsert) {
+        final BasicDBObject[] aDocs = new BasicDBObject[numDocumentsPerInsert];
         int i = 0;
         for (final Map<String, Object> data : docs) {
             final BasicDBObject doc = new BasicDBObject();
@@ -136,7 +133,7 @@ public class MongoIIBenchOldAPI implements DBIIBench {
 
     @Override
     public long queryAndMeasureElapsed(int whichQuery, double thisPrice, int thisCashRegisterId, long thisRandomTime,
-                                       int thisCustomerId) {
+                                       int thisCustomerId, final int queryLimit) {
         final BasicDBObject query = new BasicDBObject();
         final BasicDBObject keys = new BasicDBObject();
 
@@ -211,7 +208,7 @@ public class MongoIIBenchOldAPI implements DBIIBench {
 
         log.debug("Executed queryAndMeasureElapsed {}", whichQuery);
         long now = System.currentTimeMillis();
-        try(final DBCursor cursor = coll.find(query, keys).limit(config.getQueryLimit())) {
+        try(final DBCursor cursor = coll.find(query, keys).limit(queryLimit)) {
             while (cursor.hasNext()) {
                 //System.out.println(cursor.next());
                 cursor.next();

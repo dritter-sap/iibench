@@ -4,7 +4,7 @@ import com.mongodb.*;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Indexes;
-import iibench.IIbenchConfig;
+import iibench.DBIIBench;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,32 +23,30 @@ public class MongoIIBench implements DBIIBench {
 
   private final Consumer<Document> emptyConsumer = document -> {};
 
-  private IIbenchConfig config;
   private WriteConcern  myWC;
   private MongoDatabase db;
   private MongoClient   client;
   private String        indexTechnology;
   private MongoCollection<Document> coll;
 
-  public MongoIIBench(final IIbenchConfig config) {
-    this.config = config;
+  public MongoIIBench() {
     myWC = WriteConcern.JOURNALED;
   }
 
   @Override
-  public void connect(final String userName, final String password) throws Exception {
+  public void connect(final String serverName, final Integer serverPort, final String dbName, final String userName, final String password) throws Exception {
     final MongoClientOptions clientOptions = new MongoClientOptions.Builder().connectionsPerHost(2048).socketTimeout(600000)
         .writeConcern(myWC).build();
-    final ServerAddress srvrAdd = new ServerAddress(config.getServerName(), config.getServerPort());
+    final ServerAddress srvrAdd = new ServerAddress(serverName, serverPort);
     client = new MongoClient(srvrAdd, clientOptions);
 
     log.debug("mongoOptions | {}.", client.getMongoOptions().toString());
     log.debug("mongoWriteConcern | {}.", client.getWriteConcern().toString());
-    db = client.getDatabase(config.getDbName());
+    db = client.getDatabase(dbName);
   }
 
   @Override
-  public void disconnect() {
+  public void disconnect(final String dbName) {
     this.db.drop();
     this.client.close();
   }
@@ -67,13 +65,11 @@ public class MongoIIBench implements DBIIBench {
     if ((!indexTechnology.toLowerCase().equals("tokumx")) && (!indexTechnology.toLowerCase().equals("mongo"))) {
       throw new IllegalStateException("Unknown Indexing Technology " + indexTechnology + ", shutting down");
     }
-
     log.debug("  index technology = {}",indexTechnology);
 
     if (indexTechnology.toLowerCase().equals("tokumx")) {
-
-      log.debug("  + compression type = {}", config.getCompressionType());
-      log.debug("  + basement node size (bytes) = {}", config.getBasementSize());
+      log.debug("  + compression type = {}", "zlib");
+      log.debug("  + basement node size (bytes) = {}", 65536);
     }
   }
 
@@ -93,8 +89,8 @@ public class MongoIIBench implements DBIIBench {
     idxOptions.put("background", false);
 
     if (indexTechnology.toLowerCase().equals("tokumx")) {
-      idxOptions.put("compression", config.getCompressionType());
-      idxOptions.put("readPageSize", config.getBasementSize());
+      idxOptions.put("compression", "zlib");
+      idxOptions.put("readPageSize", 65536);
     }
     //coll.createIndex(Indexes.compoundIndex(Indexes.hashed("price"),
     //        Indexes.hashed("dateandtime"),
@@ -112,7 +108,7 @@ public class MongoIIBench implements DBIIBench {
   }
 
   @Override
-  public void insertDocumentToCollection(final List<Map<String, Object>> docs) {
+  public void insertDocumentToCollection(final List<Map<String, Object>> docs, final int numDocumentsPerInsert) {
     final List<Document> documents = new ArrayList<Document>();;
     for (final Map<String, Object> data : docs) {
       final Document doc = new Document();
@@ -124,7 +120,7 @@ public class MongoIIBench implements DBIIBench {
 
   @Override
   public long queryAndMeasureElapsed(final int whichQuery, final double thisPrice, final int thisCashRegisterId, final long thisRandomTime,
-      final int thisCustomerId) {
+      final int thisCustomerId, final int queryLimit) {
     log.debug("Executed queryAndMeasureElapsed {}", whichQuery);
     long now = System.currentTimeMillis();
     if (whichQuery == 1) {
@@ -133,20 +129,20 @@ public class MongoIIBench implements DBIIBench {
               and(gt("price", thisPrice), eq("dateandtime", thisRandomTime)),
               and(gt("price", thisPrice))
       )).projection(fields(include("price", "dateandtime", "customerid")))
-              .limit(config.getQueryLimit()).forEach(emptyConsumer);
+              .limit(queryLimit).forEach(emptyConsumer);
     } else if (whichQuery == 2) {
       coll.find(or(
               and(eq("price", thisPrice), gte("customerid", thisCustomerId)),
               and(gt("price", thisPrice))
       )).projection(fields(include("price", "customerid")))
-              .limit(config.getQueryLimit()).forEach(emptyConsumer);
+              .limit(queryLimit).forEach(emptyConsumer);
     } else if (whichQuery == 3) {
       coll.find(or(
               and(eq("cashregisterid", thisCashRegisterId), eq("price", thisPrice), gte("customerid", thisCustomerId)),
               and(eq("cashregisterid", thisCashRegisterId), gt("price", thisPrice)),
               and(gt("cashregisterid", thisCashRegisterId))
       )).projection(fields(include("cashregisterid", "price", "customerid")))
-              .limit(config.getQueryLimit()).forEach(emptyConsumer);
+              .limit(queryLimit).forEach(emptyConsumer);
     }
     long elapsed = System.currentTimeMillis() - now;
     return elapsed;

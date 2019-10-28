@@ -30,12 +30,14 @@ public class IIbenchBuilder {
     private Integer queryThreads;
     private Integer msBetweenQueries;
     private Integer queryIndexDirection;
+    private String dbType;
 
     public IIbenchConfig build() {
         return new IIbenchConfig(dbName, writerThreads, maxRows, numDocumentsPerInsert, numInsertsPerFeedback,
                 numSecondsPerFeedback, logFileName, compressionType, writeConcern, serverName, serverPort, basementSize,
                 numSecondaryIndexes, queryLimit, runSeconds, queryNumDocsBegin, maxInsertsPerSecond, numCharFields,
-                lengthCharFields, percentCompressible, createCollection, queryThreads, msBetweenQueries, queryIndexDirection);
+                lengthCharFields, percentCompressible, createCollection, queryThreads, msBetweenQueries, queryIndexDirection,
+                dbType);
     }
 
     public IIbenchBuilder dbName(final String dbName) {
@@ -166,6 +168,11 @@ public class IIbenchBuilder {
             log.debug("*** ERROR: queryIndexDirection must be 1 or -1 ***");
         }
         this.queryIndexDirection = queryIndexDirection;
+        return this;
+    }
+
+    public IIbenchBuilder dbType(final String dbType) {
+        this.dbType = dbType;
         return this;
     }
 }
