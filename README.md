@@ -36,9 +36,18 @@ cd iibench-mongodb
 
 ```
 
-*[optionally edit run.simple.bash to modify the benchmark behavior]*
+<!---*[optionally edit run.simple.bash to modify the benchmark behavior]*-->
 
-```bash
-java -jar iibench.jar -host remote:localhost -user root -password root -maxRows 1000000 -numDocsPerInsert 1000 -queryNumDocsBegin 100000 -numWriterThreads 1 -numQueryThreads 1 -dbType orientdb
+*OrientDB*
+```bash 
+java -jar iibench.jar -host remote:localhost -user root -password <password> 
+-maxRows 1000000 -numDocsPerInsert 1000 -queryNumDocsBegin 100000 
+-numWriterThreads 1 -numQueryThreads 1 -dbType orientdb
+```
 
+*MongoDB*
+```bash 
+java -jar iibench.jar -host localhost -port 27017 -user root -password <password> 
+-maxRows 1000000 -numDocsPerInsert 1000 -queryNumDocsBegin 100000 
+-numWriterThreads 1 -numQueryThreads 1 -dbType mongodb
 ```
