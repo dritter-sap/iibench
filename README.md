@@ -28,7 +28,7 @@ export CLASSPATH=$PWD/mongo-java-driver-2.11.4.jar:$CLASSPATH
 Running the benchmark
 =====================
 
-<!---#In the default configuration the benchmark will run for 1 hour, or 100 million inserts, whichever comes first.
+<!---#In the default configuration the benchmark will run for 1 hour, or 100 million inserts, whichever comes first.-->
 
 ```bash
 git clone https://github.com/tmcallaghan/iibench-mongodb.git
@@ -39,6 +39,6 @@ cd iibench-mongodb
 *[optionally edit run.simple.bash to modify the benchmark behavior]*
 
 ```bash
-./run.simple.bash
+java -jar iibench.jar -host remote:localhost -user root -password root -maxRows 1000000 -numDocsPerInsert 1000 -queryNumDocsBegin 100000 -numWriterThreads 1 -numQueryThreads 1 -dbType orientdb
 
-```-->
+```
