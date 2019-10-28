@@ -43,18 +43,15 @@ mvn clean package
 ```bash 
 [cd target]
 
-java -jar iibench.jar -host remote:localhost -user root -password <password> 
--maxRows 1000000 -numDocsPerInsert 1000 -queryNumDocsBegin 100000 
--numWriterThreads 1 -numQueryThreads 1 -dbType orientdb
+java -jar iibench.jar -host plocal:localhost -user root -password admin  -maxRows 1000000 -numDocsPerInsert 1000 -queryNumDocsBegin 1000000  -numWriterThreads 1 -numQueryThreads 1 -dbType -dbType orientdb
+
 ```
 
 *MongoDB*
 ```bash
 [cd target]
 
-java -jar iibench.jar -host localhost -port 27017 -user root -password <password> 
--maxRows 1000000 -numDocsPerInsert 1000 -queryNumDocsBegin 100000 
--numWriterThreads 1 -numQueryThreads 1 -dbType mongodb
+java -jar iibench.jar -host localhost -port 27017 -user root -password <password>  -maxRows 1000000 -numDocsPerInsert 1000 -queryNumDocsBegin 100000  -numWriterThreads 1 -numQueryThreads 1 -dbType mongodb
 ```
 
 Further reading
