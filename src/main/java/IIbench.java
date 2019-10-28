@@ -327,7 +327,7 @@ public class IIbench {
     }
 
     /**
-     * TODO: from here
+     * TODO: refactor from here
      */
     class MyWriter implements Runnable {
         int threadCount; 
