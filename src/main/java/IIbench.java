@@ -41,8 +41,6 @@ public class IIbench {
 
     private static int allDone = 0;
 
-    // private DBIIBench db;
-
     @Option(name = { "-user", "--user" }, description = "Database user")
     private String userName = "";
 
@@ -274,8 +272,7 @@ public class IIbench {
         return tWriterThreads;
     }
 
-    private void createCollectionAndIndex(final IIbenchConfig config,
-                                          final DBIIBench db) {
+    private void createCollectionAndIndex(final IIbenchConfig config, final DBIIBench db) {
         if (config.getCreateCollection().equals("n")) {
             log.debug("Skipping collection creation");
         } else {
@@ -329,6 +326,9 @@ public class IIbench {
         log.debug("\tServer:Port = {}:{}", config.getServerName(), config.getServerPort());
     }
 
+    /**
+     * TODO: from here
+     */
     class MyWriter implements Runnable {
         int threadCount; 
         int threadNumber; 
@@ -338,8 +338,8 @@ public class IIbench {
         
         java.util.Random rand;
         private int documentsPerInsert;
-        private String randomStringForHolder;
-        private String compressibleStringHolder;
+        //private String randomStringForHolder;
+        //private String compressibleStringHolder;
         private IIbenchConfig config;
 
         MyWriter(int threadCount, int threadNumber, int numMaxInserts, DBIIBench db, int maxInsertsPerSecond, int documentsPerInsert,
@@ -351,8 +351,8 @@ public class IIbench {
             this.db = db;
             rand = new java.util.Random((long) threadNumber);
             this.documentsPerInsert = documentsPerInsert;
-            this.randomStringForHolder = randomStringForHolder;
-            this.compressibleStringHolder = compressibleStringHolder;
+            //this.randomStringForHolder = randomStringForHolder;
+            //this.compressibleStringHolder = compressibleStringHolder;
             this.config = config;
         }
         public void run() {
