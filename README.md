@@ -33,6 +33,7 @@ Running the benchmark
 ```bash
 git clone https://github.com/tmcallaghan/iibench-mongodb.git
 cd iibench-mongodb
+mvn clean package
 
 ```
 
