@@ -56,3 +56,10 @@ java -jar iibench.jar -host localhost -port 27017 -user root -password <password
 -maxRows 1000000 -numDocsPerInsert 1000 -queryNumDocsBegin 100000 
 -numWriterThreads 1 -numQueryThreads 1 -dbType mongodb
 ```
+
+Further reading
+===============
+
+* MongoDB 3.2 WiredTiger Benchmark: https://dzone.com/articles/mongodb-32-wiredtiger-in-iibench
+* MongoDB benchmark: sysbench-mongodb IO-bound workload comparison: https://www.percona.com/blog/2015/07/14/mongodb-benchmark-sysbench-mongodb-io-bound-workload-comparison/
+* Linkbench for MySQL & MongoDB with a cached database: http://smalldatum.blogspot.com/2015/07/linkbench-for-mysql-mongodb-with-cached.html
