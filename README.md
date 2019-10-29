@@ -43,7 +43,7 @@ mvn clean package
 ```bash 
 [cd target]
 
-java -jar iibench.jar -host plocal:localhost -user root -password admin -maxRows 1000000 -numDocsPerInsert 1000 -queryNumDocsBegin 1000000 -numWriterThreads 1 -numQueryThreads 1 -dbType -dbType orientdb
+java -jar iibench.jar -host plocal:localhost -user root -password <password> -maxRows 1000000 -numDocsPerInsert 1000 -queryNumDocsBegin 1000000 -numWriterThreads 1 -numQueryThreads 1 -dbType -dbType orientdb
 
 ```
 
