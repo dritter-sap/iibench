@@ -3,9 +3,9 @@ import com.github.rvesse.airline.annotations.Cli;
 import com.github.rvesse.airline.annotations.Command;
 import com.github.rvesse.airline.annotations.Option;
 import iibench.DBIIBench;
-import iibench.IIbenchBuilder;
+import iibench.DatabaseTypes;
 import iibench.IIbenchConfig;
-import iibench.databases.*;
+import iibench.threads.ThreadUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +41,8 @@ public class IIbench {
 
     private static int allDone = 0;
 
+    private static final String IIBENCH_PROPERTIES_FILE_NAME = "iibench.properties";
+
     @Option(name = { "-user", "--user" }, description = "Database user")
     private String userName = "";
 
@@ -71,13 +73,6 @@ public class IIbench {
     @Option(name = { "-dbType", "--dbType" }, description = "Database types: 'docstore', 'orientdb', 'mongodb', 'mongodbold'")
     private String dbType = "";
 
-    final Map<String, DBIIBench> databases = new HashMap<String, DBIIBench>() {{
-        put("docstore", new HDBDocStoreIIBench());
-        put("orientdb", new OrientIIBench());
-        put("mongodb", new MongoIIBench());
-        put("mongodbold", new MongoIIBenchOldAPI());
-    }};
-
     public IIbench() {}
 
     public static void main (String[] args) {
@@ -88,23 +83,59 @@ public class IIbench {
 
     private void run() {
         final Properties props = new Properties();
+        DBIIBench databaseType=null;
         try {
-            props.load(IIbench.class.getResourceAsStream("iibench.properties"));
+            props.load(IIbench.class.getResourceAsStream(IIBENCH_PROPERTIES_FILE_NAME));
             this.mixinCmdParameterValues(props);
-            final IIbenchConfig config = this.loadBenchmarkConfig(props);
-            this.process(this.selectDatabase(config.getDbType()), config, this.userName, this.password);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (Exception e) {
-            e.printStackTrace();
+            final IIbenchConfig config = IIbenchConfig.load(props);
+            databaseType = DatabaseTypes.select(config.getDbType());
+            this.process(databaseType, config, this.userName, this.password);
+        } catch (final IOException e) {
+            log.error("Failed to load configuration properties " + IIBENCH_PROPERTIES_FILE_NAME, e);
+        } catch (final Exception e) {
+            log.error("Failed to process benchmark for database type " + databaseType, e);
         }
     }
 
-    private DBIIBench selectDatabase(final String dbType) {
-        if (!databases.containsKey(dbType)) {
-            throw new IllegalArgumentException("Database type " + dbType + " unknown.");
+    public void process(final DBIIBench db, final IIbenchConfig config, final String userName,
+                        final String password) throws Exception {
+        config.logSelectedApplicationParameters();
+
+        db.connect(config.getServerName(), config.getServerPort(), config.getDbName(), userName, password);
+        db.checkIndexUsed();
+
+        log.debug("--------------------------------------------------");
+        if (config.getWriterThreads() > 1) {
+            config.setMaxRows(config.getMaxRows() / config.getWriterThreads());
         }
-        return databases.get(dbType);
+        this.createCollectionAndIndex(config, db, "purchases_index");
+
+        try (final Writer writer = new BufferedWriter(new FileWriter(new File(db.getClass().getSimpleName()
+                + "-qTs_" + config.getQueryThreads()
+                + "-wTs_" + config.getWriterThreads()
+                + "-batch_" + config.getNumDocumentsPerInsert()
+                + "-qNumDocsBegin_" + config.getQueryNumDocsBegin()
+                + "-host_" + config.getServerName()
+                + "-"
+                + config.getLogFileName())))) {
+            final Thread reporterThread = startReporterThread(config, writer);
+            final Thread[] writerThreads = startWriterThread(config, db);
+
+            Thread[] queryThreads = null;
+            if (config.getMaxRows() > config.getQueryNumDocsBegin()) {
+                queryThreads = startQueryThreads(config, db);
+            }
+            final ThreadUtils threadUtils = new ThreadUtils();
+            threadUtils.waitForMs(10000);
+            threadUtils.joinThread(reporterThread);
+            if (config.getMaxRows() > config.getQueryNumDocsBegin()) {
+                threadUtils.joinThreads(queryThreads, config.getQueryThreads());
+            }
+            threadUtils.joinThreads(writerThreads, config.getWriterThreads());
+        } finally {
+            db.disconnect(config.getDbName());
+            log.debug("Done!");
+        }
     }
 
     private void mixinCmdParameterValues(final Properties props) {
@@ -137,98 +168,8 @@ public class IIbench {
         }
     }
 
-    private IIbenchConfig loadBenchmarkConfig(final Properties props) {
-        final IIbenchConfig config = new IIbenchBuilder().dbName(props.getProperty("DB_NAME"))
-                .writerThreads(Integer.valueOf(props.getProperty("NUM_LOADER_THREADS")))
-                .numMaxInserts(Integer.valueOf(props.getProperty("MAX_ROWS")))
-                .documentsPerInsert(Integer.valueOf(props.getProperty("NUM_DOCUMENTS_PER_INSERT")))
-                .insertsPerFeedback(Integer.valueOf(props.getProperty("NUM_INSERTS_PER_FEEDBACK")))
-                .secondsPerFeedback(Integer.valueOf(props.getProperty("NUM_SECONDS_PER_FEEDBACK")))
-                .logFileName(props.getProperty("BENCHMARK_TSV"))
-                //.compressionType(props.getProperty("COMPRESSION_TYPE"))
-                .writeWriteConcen(props.getProperty("WRITE_CONCERN"))
-                .serverName(props.getProperty("SERVER_NAME"))
-                .serverPort(Integer.valueOf(props.getProperty("SERVER_PORT")))
-                //.basementSize(Integer.valueOf(props.getProperty("MONGO_BASEMENT")))
-                .numSecondaryIndexes(Integer.valueOf(props.getProperty("NUM_SECONDARY_INDEXES")))
-                .queryLimit(Integer.valueOf(props.getProperty("QUERY_LIMIT")))
-                .numSeconds(Long.valueOf(props.getProperty("RUN_SECONDS")))
-                .queryBeginNumDocs(Integer.valueOf(props.getProperty("QUERY_NUM_DOCS_BEGIN")))
-                .maxInsertsPerSecond(Integer.valueOf(props.getProperty("MAX_INSERTS_PER_SECOND")))
-                .numCharFields(Integer.valueOf(props.getProperty("NUM_CHAR_FIELDS")))
-                .lengthCharFields(Integer.valueOf(props.getProperty("LENGTH_CHAR_FIELDS")))
-                .percentCompressible(Integer.valueOf(props.getProperty("PERCENT_COMPRESSIBLE")))
-                .createCollection(props.get("CREATE_COLLECTION").toString().toLowerCase())
-                .queryThreads(Integer.valueOf(props.getProperty("QUERY_THREADS")))
-                .msBetweenQueries(Integer.valueOf(props.getProperty("MS_BETWEEN_QUERIES")))
-                .queryIndexDirection(Integer.valueOf(props.getProperty("QUERY_DIRECTION")))
-                .dbType(props.getProperty("DB_TYPE")).build();
-        config.setMaxThreadInsertsPerSecond((int) ((double) config.getMaxInsertsPerSecond() / (config.getWriterThreads() > 0 ? config.getWriterThreads() : 1)));
-        return config;
-    }
-
-    public static void logMe(final String format, final Object... args) {
+    private static void logMe(final String format, final Object... args) {
         System.out.println(Thread.currentThread() + String.format(format, args));
-    }
-
-    public void process(final DBIIBench db, final IIbenchConfig config,
-                        final String userName, final String password) throws Exception {
-        this.logSelectedApplicationParameters(config);
-
-        db.connect(config.getServerName(), config.getServerPort(), config.getDbName(), userName, password);
-        db.checkIndexUsed();
-
-        log.debug("--------------------------------------------------");
-        if (config.getWriterThreads() > 1) {
-            config.setMaxRows(config.getMaxRows() / config.getWriterThreads());
-        }
-        this.createCollectionAndIndex(config, db);
-
-        try (final Writer writer = new BufferedWriter(new FileWriter(new File(db.getClass().getSimpleName()
-                + "-qTs_" + config.getQueryThreads()
-                + "-wTs_" + config.getWriterThreads()
-                + "-batch_" + config.getNumDocumentsPerInsert()
-                + "-qNumDocsBegin_" + config.getQueryNumDocsBegin()
-                + "-host_" + config.getServerName()
-                + "-"
-                + config.getLogFileName())))) {
-            final Thread reporterThread = startReporterThread(config, writer);
-            final Thread[] writerThreads = startWriterThread(config, db);
-
-            Thread[] queryThreads = null;
-            if (config.getMaxRows() > config.getQueryNumDocsBegin()) {
-                queryThreads = startQueryThreads(config, db);
-            }
-            waitForMs(10000);
-            joinThread(reporterThread);
-            if (config.getMaxRows() > config.getQueryNumDocsBegin()) {
-                joinThreads(queryThreads, config.getQueryThreads());
-            }
-            joinThreads(writerThreads, config.getWriterThreads());
-        } finally {
-            db.disconnect(config.getDbName());
-            log.debug("Done!");
-        }
-    }
-
-    private void joinThread(final Thread thread) throws InterruptedException {
-        if (thread.isAlive()) {
-            thread.join();
-        }
-    }
-
-    private void joinThreads(final Thread[] threads, final int writerThreads) throws InterruptedException {
-        for (int i = 0; i < writerThreads; i++) {
-            joinThread(threads[i]);
-        }
-    }
-
-    private void waitForMs(int timeToWaitInMs) {
-        try {
-            Thread.sleep(timeToWaitInMs);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     private Thread[] startQueryThreads(final IIbenchConfig config,
@@ -272,11 +213,10 @@ public class IIbench {
         return tWriterThreads;
     }
 
-    private void createCollectionAndIndex(final IIbenchConfig config, final DBIIBench db) {
+    private void createCollectionAndIndex(final IIbenchConfig config, final DBIIBench db, final String collectionName) {
         if (config.getCreateCollection().equals("n")) {
             log.debug("Skipping collection creation");
         } else {
-            final String collectionName = "purchases_index";
             db.createCollection(collectionName);
             db.createIndexForCollection();
         }
@@ -299,31 +239,6 @@ public class IIbench {
             tempString[i] = (char) (rand.nextInt(26) + 'a');
         }
         return new String(tempString);
-    }
-
-    private void logSelectedApplicationParameters(final IIbenchConfig config) {
-        log.debug("Application Parameters");
-        log.debug("--------------------------------------------------");
-        log.debug("\tdatabase name = {}", config.getDbName());
-        log.debug("\t{} writer thread(s)", config.getWriterThreads());
-        log.debug("\t{} queryAndMeasureElapsed thread(s)", config.getQueryThreads());
-        log.debug("\t{} documents per collection",config.getMaxRows());
-        log.debug("\t{} character fields", config.getNumCharFields());
-        log.debug("\t{} bytes per character field", config.getLengthCharFields());
-        log.debug("\t{} secondary indexes", config.getNumSecondaryIndexes());
-        log.debug("\tDocuments Per Insert = {}", config.getNumDocumentsPerInsert());
-        log.debug("\tMaximum of {} insert(s) per second", config.getMaxInsertsPerSecond());
-        log.debug("\tMaximum of {} insert(s) per second per writer thread", config.getMaxThreadInsertsPerSecond());
-        log.debug("\tFeedback every {} seconds(s)", config.getNumSecondsPerFeedback());
-        log.debug("\tFeedback every {} inserts(s)", config.getNumInsertsPerFeedback());
-        log.debug("\tlogging to file {}", config.getLogFileName());
-        log.debug("\tRun for {} second(s)", config.getRunSeconds());
-        log.debug("\tExtra character fields are {} percent compressible", config.getPercentCompressible());
-        log.debug("\t{} milliseconds between queries", config.getMsBetweenQueries());
-        log.debug("\tQueries limited to {} document(s) with index direction {}", config.getQueryLimit(), config.getQueryIndexDirection());
-        log.debug("\tStarting queries after %{} document(s) inserted", config.getQueryNumDocsBegin());
-        log.debug("\twrite concern = {}", config.getWriteConcern());
-        log.debug("\tServer:Port = {}:{}", config.getServerName(), config.getServerPort());
     }
 
     /**

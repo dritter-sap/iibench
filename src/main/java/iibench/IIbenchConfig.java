@@ -1,6 +1,13 @@
 package iibench;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Properties;
+
 public class IIbenchConfig {
+    private static final Logger log = LoggerFactory.getLogger(IIbenchConfig.class);
+
     private final String  dbName;
     private final int     writerThreads;
     private Integer       maxRows;
@@ -60,6 +67,61 @@ public class IIbenchConfig {
         this.msBetweenQueries = msBetweenQueries;
         this.queryIndexDirection = queryIndexDirection;
         this.dbType = dbType;
+    }
+
+    public static IIbenchConfig load(final Properties props) {
+        final IIbenchConfig config = new IIbenchBuilder().dbName(props.getProperty("DB_NAME"))
+                .writerThreads(Integer.valueOf(props.getProperty("NUM_LOADER_THREADS")))
+                .numMaxInserts(Integer.valueOf(props.getProperty("MAX_ROWS")))
+                .documentsPerInsert(Integer.valueOf(props.getProperty("NUM_DOCUMENTS_PER_INSERT")))
+                .insertsPerFeedback(Integer.valueOf(props.getProperty("NUM_INSERTS_PER_FEEDBACK")))
+                .secondsPerFeedback(Integer.valueOf(props.getProperty("NUM_SECONDS_PER_FEEDBACK")))
+                .logFileName(props.getProperty("BENCHMARK_TSV"))
+                //.compressionType(props.getProperty("COMPRESSION_TYPE"))
+                .writeWriteConcen(props.getProperty("WRITE_CONCERN"))
+                .serverName(props.getProperty("SERVER_NAME"))
+                .serverPort(Integer.valueOf(props.getProperty("SERVER_PORT")))
+                //.basementSize(Integer.valueOf(props.getProperty("MONGO_BASEMENT")))
+                .numSecondaryIndexes(Integer.valueOf(props.getProperty("NUM_SECONDARY_INDEXES")))
+                .queryLimit(Integer.valueOf(props.getProperty("QUERY_LIMIT")))
+                .numSeconds(Long.valueOf(props.getProperty("RUN_SECONDS")))
+                .queryBeginNumDocs(Integer.valueOf(props.getProperty("QUERY_NUM_DOCS_BEGIN")))
+                .maxInsertsPerSecond(Integer.valueOf(props.getProperty("MAX_INSERTS_PER_SECOND")))
+                .numCharFields(Integer.valueOf(props.getProperty("NUM_CHAR_FIELDS")))
+                .lengthCharFields(Integer.valueOf(props.getProperty("LENGTH_CHAR_FIELDS")))
+                .percentCompressible(Integer.valueOf(props.getProperty("PERCENT_COMPRESSIBLE")))
+                .createCollection(props.get("CREATE_COLLECTION").toString().toLowerCase())
+                .queryThreads(Integer.valueOf(props.getProperty("QUERY_THREADS")))
+                .msBetweenQueries(Integer.valueOf(props.getProperty("MS_BETWEEN_QUERIES")))
+                .queryIndexDirection(Integer.valueOf(props.getProperty("QUERY_DIRECTION")))
+                .dbType(props.getProperty("DB_TYPE")).build();
+        config.setMaxThreadInsertsPerSecond((int) ((double) config.getMaxInsertsPerSecond() / (config.getWriterThreads() > 0 ? config.getWriterThreads() : 1)));
+        return config;
+    }
+
+    public void logSelectedApplicationParameters() {
+        log.debug("Application Parameters");
+        log.debug("--------------------------------------------------");
+        log.debug("\tdatabase name = {}", this.getDbName());
+        log.debug("\t{} writer thread(s)", this.getWriterThreads());
+        log.debug("\t{} queryAndMeasureElapsed thread(s)", this.getQueryThreads());
+        log.debug("\t{} documents per collection",this.getMaxRows());
+        log.debug("\t{} character fields", this.getNumCharFields());
+        log.debug("\t{} bytes per character field", this.getLengthCharFields());
+        log.debug("\t{} secondary indexes", this.getNumSecondaryIndexes());
+        log.debug("\tDocuments Per Insert = {}", this.getNumDocumentsPerInsert());
+        log.debug("\tMaximum of {} insert(s) per second", this.getMaxInsertsPerSecond());
+        log.debug("\tMaximum of {} insert(s) per second per writer thread", this.getMaxThreadInsertsPerSecond());
+        log.debug("\tFeedback every {} seconds(s)", this.getNumSecondsPerFeedback());
+        log.debug("\tFeedback every {} inserts(s)", this.getNumInsertsPerFeedback());
+        log.debug("\tlogging to file {}", this.getLogFileName());
+        log.debug("\tRun for {} second(s)", this.getRunSeconds());
+        log.debug("\tExtra character fields are {} percent compressible", this.getPercentCompressible());
+        log.debug("\t{} milliseconds between queries", this.getMsBetweenQueries());
+        log.debug("\tQueries limited to {} document(s) with index direction {}", this.getQueryLimit(), this.getQueryIndexDirection());
+        log.debug("\tStarting queries after %{} document(s) inserted", this.getQueryNumDocsBegin());
+        log.debug("\twrite concern = {}", this.getWriteConcern());
+        log.debug("\tServer:Port = {}:{}", this.getServerName(), this.getServerPort());
     }
 
     public void setMaxThreadInsertsPerSecond(final Integer maxThreadInsertsPerSecond) {
