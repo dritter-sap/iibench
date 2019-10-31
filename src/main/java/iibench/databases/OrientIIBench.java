@@ -80,10 +80,10 @@ public class OrientIIBench implements DBIIBench {
   public void createIndexForCollection() {
     try (final ODatabaseSession session = pool.acquire()) {
       final OClass cls = session.getClass(collection.getName());
-      cls.createIndex(collection.getName() + "idxp", OClass.INDEX_TYPE.UNIQUE_HASH_INDEX, "price");
-      cls.createIndex(collection.getName() + "idxd", OClass.INDEX_TYPE.UNIQUE_HASH_INDEX, "dateandtime");
-      cls.createIndex(collection.getName() + "idxc", OClass.INDEX_TYPE.UNIQUE_HASH_INDEX, "customerid");
-      cls.createIndex(collection.getName() + "idxch", OClass.INDEX_TYPE.UNIQUE_HASH_INDEX, "cashregisterid");
+      cls.createIndex(collection.getName() + "idxp", OClass.INDEX_TYPE.NOTUNIQUE_HASH_INDEX, "price");
+      cls.createIndex(collection.getName() + "idxd", OClass.INDEX_TYPE.NOTUNIQUE_HASH_INDEX, "dateandtime");
+      cls.createIndex(collection.getName() + "idxc", OClass.INDEX_TYPE.NOTUNIQUE_HASH_INDEX, "customerid");
+      cls.createIndex(collection.getName() + "idxch", OClass.INDEX_TYPE.NOTUNIQUE_HASH_INDEX, "cashregisterid");
     }
   }
 
