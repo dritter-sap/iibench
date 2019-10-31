@@ -85,10 +85,10 @@ public class MongoIIBench implements DBIIBench {
 
   @Override
   public void createIndexForCollection() {
-    coll.createIndex(Indexes.hashed("price"));
-    coll.createIndex(Indexes.hashed("dateandtime"));
-    coll.createIndex(Indexes.hashed("customerid"));
-    coll.createIndex(Indexes.hashed("cashregisterid"));
+    coll.createIndex(Indexes.ascending("price"));
+    coll.createIndex(Indexes.ascending("dateandtime"));
+    coll.createIndex(Indexes.ascending("customerid"));
+    coll.createIndex(Indexes.ascending("cashregisterid"));
   }
 
   @Override
@@ -98,7 +98,7 @@ public class MongoIIBench implements DBIIBench {
 
   @Override
   public void insertDocumentToCollection(final List<Map<String, Object>> docs, final int numDocumentsPerInsert) {
-    final List<Document> documents = new ArrayList<Document>();;
+    final List<Document> documents = new ArrayList<Document>();
     for (final Map<String, Object> data : docs) {
       final Document doc = new Document();
       data.entrySet().stream().forEach(e -> doc.append(e.getKey(), e.getValue()));
