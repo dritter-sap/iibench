@@ -85,17 +85,6 @@ public class MongoIIBench implements DBIIBench {
 
   @Override
   public void createIndexForCollection() {
-    final BasicDBObject idxOptions = new BasicDBObject();
-    idxOptions.put("background", false);
-
-    if (indexTechnology.toLowerCase().equals("tokumx")) {
-      idxOptions.put("compression", "zlib");
-      idxOptions.put("readPageSize", 65536);
-    }
-    //coll.createIndex(Indexes.compoundIndex(Indexes.hashed("price"),
-    //        Indexes.hashed("dateandtime"),
-    //        Indexes.hashed("customerid"),
-    //        Indexes.hashed("cashregisterid")));
     coll.createIndex(Indexes.hashed("price"));
     coll.createIndex(Indexes.hashed("dateandtime"));
     coll.createIndex(Indexes.hashed("customerid"));
