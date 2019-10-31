@@ -65,9 +65,6 @@ public class OrientIIBench implements DBIIBench {
   public void createCollection(final String name) {
     try (final ODatabaseSession session = pool.acquire()) {
       collection = session.createClass(name);
-      collection.createProperty("price", OType.DOUBLE);
-      collection.createProperty("dateandtime", OType.LONG);
-      collection.createProperty("customerid", OType.INTEGER);
       collection.createProperty("cashregisterid", OType.INTEGER);
       collection.createProperty("dateandtime", OType.LONG);
       collection.createProperty("customerid", OType.INTEGER);
