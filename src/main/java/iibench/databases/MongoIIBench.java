@@ -1,64 +1,62 @@
 package iibench.databases;
 
 import com.mongodb.*;
-import iibench.IIbenchConfig;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Indexes;
+import iibench.DBIIBench;
+import org.bson.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
+
+import static com.mongodb.client.model.Filters.*;
+import static com.mongodb.client.model.Projections.fields;
+import static com.mongodb.client.model.Projections.include;
 
 public class MongoIIBench implements DBIIBench {
-  private IIbenchConfig config;
+  private static final Logger log = LoggerFactory.getLogger(MongoIIBench.class);
+
+  private final Consumer<Document> emptyConsumer = document -> {};
+
   private WriteConcern  myWC;
-  private DB            db;
+  private MongoDatabase db;
   private MongoClient   client;
   private String        indexTechnology;
-  private DBCollection  coll;
+  private MongoCollection<Document> coll;
 
-  public MongoIIBench(final IIbenchConfig config) {
-    this.config = config;
-
+  public MongoIIBench() {
     myWC = WriteConcern.JOURNALED;
-//    if (config.getWriteConcern().toLowerCase().equals("fsync_safe")) {
-//      myWC = WriteConcern.FSYNC_SAFE;
-//    } else if ((config.getWriteConcern().toLowerCase().equals("none"))) {
-//      myWC = WriteConcern.SAFE;
-//    } else if ((config.getWriteConcern().toLowerCase().equals("normal"))) {
-//      myWC = WriteConcern.NORMAL;
-//    } else if ((config.getWriteConcern().toLowerCase().equals("replicas_safe"))) {
-//      myWC = WriteConcern.REPLICAS_SAFE;
-//    } else if ((config.getWriteConcern().toLowerCase().equals("safe"))) {
-//      myWC = WriteConcern.SAFE;
-//    } else {
-//      throw new UnsupportedOperationException("Write concern " + config.getWriteConcern() + " is not supported");
-//    }
   }
 
   @Override
-  public void connect() throws Exception {
+  public void connect(final String serverName, final Integer serverPort, final String dbName, final String userName, final String password) throws Exception {
     final MongoClientOptions clientOptions = new MongoClientOptions.Builder().connectionsPerHost(2048).socketTimeout(600000)
         .writeConcern(myWC).build();
-    final ServerAddress srvrAdd = new ServerAddress(config.getServerName(), config.getServerPort());
+    final ServerAddress srvrAdd = new ServerAddress(serverName, serverPort);
     client = new MongoClient(srvrAdd, clientOptions);
 
-    //TODO: logMe("mongoOptions | " + m.getMongoOptions().toString());
-    //TODO: logMe("mongoWriteConcern | " + m.getWriteConcern().toString());
-    db = client.getDB(config.getDbName());
+    log.debug("mongoOptions | {}.", client.getMongoOptions().toString());
+    log.debug("mongoWriteConcern | {}.", client.getWriteConcern().toString());
+    db = client.getDatabase(dbName);
   }
 
   @Override
-  public void disconnect() {
+  public void disconnect(final String dbName) {
+    this.db.drop();
     this.client.close();
   }
 
   @Override
   public void checkIndexUsed() {
-    // determine server type : mongo or tokumx
-    // DBObject checkServerCmd = new BasicDBObject();
-    CommandResult commandResult = db.command("buildInfo");
+    final Document buildInfo = db.runCommand(new Document("buildInfo", 1));
 
     // check if tokumxVersion exists, otherwise assume mongo
-    if (commandResult.toString().contains("tokumxVersion")) {
+    if (buildInfo.toString().contains("tokumxVersion")) {
       indexTechnology = "tokumx";
     } else {
       indexTechnology = "mongo";
@@ -67,31 +65,22 @@ public class MongoIIBench implements DBIIBench {
     if ((!indexTechnology.toLowerCase().equals("tokumx")) && (!indexTechnology.toLowerCase().equals("mongo"))) {
       throw new IllegalStateException("Unknown Indexing Technology " + indexTechnology + ", shutting down");
     }
-
-    //TODO: logMe("  index technology = %s",indexTechnology);
+    log.debug("  index technology = {}",indexTechnology);
 
     if (indexTechnology.toLowerCase().equals("tokumx")) {
-      //TODO: logMe("  + compression type = %s", config.getCompressionType());
-      //TODO: logMe("  + basement node size (bytes) = %d", config.getBasementSize());
+      log.debug("  + compression type = {}", "zlib");
+      log.debug("  + basement node size (bytes) = {}", 65536);
     }
   }
 
   @Override
   public void createCollection(final String name) {
-    if (indexTechnology.toLowerCase().equals("tokumx")) {
-      DBObject cmd = new BasicDBObject();
-      cmd.put("create", name);
-      cmd.put("compression", config.getCompressionType());
-      cmd.put("readPageSize", config.getBasementSize());
-      CommandResult result = db.command(cmd);
-      //logMe(result.toString());
-    } else if (indexTechnology.toLowerCase().equals("mongo")) {
-      // nothing special to do for a regular mongo collection
+    if (indexTechnology.toLowerCase().equals("mongo")) {
+      coll = db.getCollection(name);
+      return;
     } else {
       throw new IllegalStateException("Unknown Indexing Technology " + indexTechnology + ", shutting down");
     }
-    coll = db.getCollection(name);
-
   }
 
   @Override
@@ -100,135 +89,60 @@ public class MongoIIBench implements DBIIBench {
     idxOptions.put("background", false);
 
     if (indexTechnology.toLowerCase().equals("tokumx")) {
-      idxOptions.put("compression", config.getCompressionType());
-      idxOptions.put("readPageSize", config.getBasementSize());
+      idxOptions.put("compression", "zlib");
+      idxOptions.put("readPageSize", 65536);
     }
-
-    coll.createIndex(new BasicDBObject("cashregisterid", 1), idxOptions);
-
-//        if (config.getNumSecondaryIndexes() >= 1) {
-//            //TODO: logMe(" *** creating secondary index on price + customerid");
-//            coll.ensureIndex(new BasicDBObject("price", 1).append("customerid", 1), idxOptions);
-//        }
-//        if (config.getNumSecondaryIndexes() >= 2) {
-//            //TODO: logMe(" *** creating secondary index on cashregisterid + price + customerid");
-//            coll.ensureIndex(new BasicDBObject("cashregisterid", 1).append("price", 1).append("customerid", 1), idxOptions);
-//        }
-//        if (config.getNumSecondaryIndexes() >= 3) {
-//            //TODO: logMe(" *** creating secondary index on price + dateandtime + customerid");
-//            coll.ensureIndex(new BasicDBObject("price", 1).append("dateandtime", 1).append("customerid", 1), idxOptions);
-//        }
+    //coll.createIndex(Indexes.compoundIndex(Indexes.hashed("price"),
+    //        Indexes.hashed("dateandtime"),
+    //        Indexes.hashed("customerid"),
+    //        Indexes.hashed("cashregisterid")));
+    coll.createIndex(Indexes.hashed("price"));
+    coll.createIndex(Indexes.hashed("dateandtime"));
+    coll.createIndex(Indexes.hashed("customerid"));
+    coll.createIndex(Indexes.hashed("cashregisterid"));
   }
 
   @Override
   public String getCollectionName() {
-    return coll.getName();
+    return coll.getDocumentClass().getName(); //TODO: check .getName();
   }
 
   @Override
-  public void insertDocumentToCollection(final List<Map<String, Object>> docs) {
-    final BasicDBObject[] aDocs = new BasicDBObject[config.getNumDocumentsPerInsert()];
-    int i = 0;
+  public void insertDocumentToCollection(final List<Map<String, Object>> docs, final int numDocumentsPerInsert) {
+    final List<Document> documents = new ArrayList<Document>();;
     for (final Map<String, Object> data : docs) {
-      final BasicDBObject doc = new BasicDBObject();
-      data.entrySet().stream().forEach(e -> doc.put(e.getKey(), e.getValue()));
-      aDocs[i] = doc;
-      i++;
+      final Document doc = new Document();
+      data.entrySet().stream().forEach(e -> doc.append(e.getKey(), e.getValue()));
+      documents.add(doc);
     }
-    coll.insert(aDocs);
+    coll.insertMany(documents);
   }
 
   @Override
-  public long queryAndMeasureElapsed(int whichQuery, double thisPrice, int thisCashRegisterId, long thisRandomTime,
-      int thisCustomerId) {
-    BasicDBObject query = new BasicDBObject();
-    BasicDBObject keys = new BasicDBObject();
-
-    if (whichQuery == 1) {
-      BasicDBObject query1a = new BasicDBObject();
-      query1a.put("price", thisPrice);
-      query1a.put("dateandtime", thisRandomTime);
-      query1a.put("customerid", new BasicDBObject("$gte", thisCustomerId));
-
-      BasicDBObject query1b = new BasicDBObject();
-      query1b.put("price", thisPrice);
-      query1b.put("dateandtime", new BasicDBObject("$gt", thisRandomTime));
-
-      BasicDBObject query1c = new BasicDBObject();
-      query1c.put("price", new BasicDBObject("$gt", thisPrice));
-
-      ArrayList<BasicDBObject> list1 = new ArrayList<BasicDBObject>();
-      list1.add(query1a);
-      list1.add(query1b);
-      list1.add(query1c);
-
-      query.put("$or", list1);
-
-      keys.put("price", 1);
-      keys.put("dateandtime", 1);
-      keys.put("customerid", 1);
-      keys.put("_id", 0);
-
-    } else if (whichQuery == 2) {
-      BasicDBObject query2a = new BasicDBObject();
-      query2a.put("price", thisPrice);
-      query2a.put("customerid", new BasicDBObject("$gte", thisCustomerId));
-
-      BasicDBObject query2b = new BasicDBObject();
-      query2b.put("price", new BasicDBObject("$gt", thisPrice));
-
-      ArrayList<BasicDBObject> list2 = new ArrayList<BasicDBObject>();
-      list2.add(query2a);
-      list2.add(query2b);
-
-      query.put("$or", list2);
-
-      keys.put("price", 1);
-      keys.put("customerid", 1);
-      keys.put("_id", 0);
-
-    } else if (whichQuery == 3) {
-      BasicDBObject query3a = new BasicDBObject();
-      query3a.put("cashregisterid", thisCashRegisterId);
-      query3a.put("price", thisPrice);
-      query3a.put("customerid", new BasicDBObject("$gte", thisCustomerId));
-
-      BasicDBObject query3b = new BasicDBObject();
-      query3b.put("cashregisterid", thisCashRegisterId);
-      query3b.put("price", new BasicDBObject("$gt", thisPrice));
-
-      BasicDBObject query3c = new BasicDBObject();
-      query3c.put("cashregisterid", new BasicDBObject("$gt", thisCashRegisterId));
-
-      ArrayList<BasicDBObject> list3 = new ArrayList<BasicDBObject>();
-      list3.add(query3a);
-      list3.add(query3b);
-      list3.add(query3c);
-
-      query.put("$or", list3);
-
-      keys.put("cashregisterid", 1);
-      keys.put("price", 1);
-      keys.put("customerid", 1);
-      keys.put("_id", 0);
-    }
-
-    //logMe("Executed queryAndMeasureElapsed %d",whichQuery);
+  public long queryAndMeasureElapsed(final int whichQuery, final double thisPrice, final int thisCashRegisterId, final long thisRandomTime,
+      final int thisCustomerId, final int queryLimit) {
+    log.debug("Executed queryAndMeasureElapsed {}", whichQuery);
     long now = System.currentTimeMillis();
-    DBCursor cursor = null;
-    try {
-      cursor = coll.find(query, keys).limit(config.getQueryLimit());
-      while (cursor.hasNext()) {
-        //System.out.println(cursor.next());
-        cursor.next();
-      }
-      cursor.close();
-      cursor = null;
-    } catch (Exception e) {
-      //TODO: logMe("Query thread %d : EXCEPTION",threadNumber);
-      e.printStackTrace();
-      if (cursor != null)
-        cursor.close();
+    if (whichQuery == 1) {
+      coll.find(or(
+              and(eq("price", thisPrice), eq("dateandtime", thisRandomTime), gte("customerid", thisCustomerId)),
+              and(gt("price", thisPrice), eq("dateandtime", thisRandomTime)),
+              and(gt("price", thisPrice))
+      )).projection(fields(include("price", "dateandtime", "customerid")))
+              .limit(queryLimit).forEach(emptyConsumer);
+    } else if (whichQuery == 2) {
+      coll.find(or(
+              and(eq("price", thisPrice), gte("customerid", thisCustomerId)),
+              and(gt("price", thisPrice))
+      )).projection(fields(include("price", "customerid")))
+              .limit(queryLimit).forEach(emptyConsumer);
+    } else if (whichQuery == 3) {
+      coll.find(or(
+              and(eq("cashregisterid", thisCashRegisterId), eq("price", thisPrice), gte("customerid", thisCustomerId)),
+              and(eq("cashregisterid", thisCashRegisterId), gt("price", thisPrice)),
+              and(gt("cashregisterid", thisCashRegisterId))
+      )).projection(fields(include("cashregisterid", "price", "customerid")))
+              .limit(queryLimit).forEach(emptyConsumer);
     }
     long elapsed = System.currentTimeMillis() - now;
     return elapsed;
