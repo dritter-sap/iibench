@@ -157,7 +157,7 @@ public class IIbench {
         if (this.queryNumDocsBegin != 0) {
             props.setProperty("QUERY_NUM_DOCS_BEGIN", String.valueOf(this.queryNumDocsBegin));
         }
-        if (this.numWriterThreads != 00) {
+        if (this.numWriterThreads != 0) {
             props.setProperty("NUM_LOADER_THREADS", String.valueOf(this.numWriterThreads));
         }
         if (this.numQueryThreads != 0) {
@@ -205,9 +205,9 @@ public class IIbench {
         final Thread[] tWriterThreads = new Thread[config.getWriterThreads()];
         for (int i=0; i<config.getWriterThreads(); i++) {
             globalWriterThreads.incrementAndGet();
-            tWriterThreads[i] = new Thread(this.new MyWriter(config.getWriterThreads(), i, config.getMaxRows(), db,
+            tWriterThreads[i] = new Thread(this.new MyWriter(i, config.getMaxRows(), db,
                     config.getMaxThreadInsertsPerSecond(), config.getNumDocumentsPerInsert(), createRandomStringForHolder(),
-                    createCompressibleStringHolder(), config));
+                    createCompressibleStringHolder(), config)); // config.getWriterThreads()
             tWriterThreads[i].start();
         }
         return tWriterThreads;
@@ -245,44 +245,36 @@ public class IIbench {
      * TODO: refactor from here
      */
     class MyWriter implements Runnable {
-        int threadCount; 
-        int threadNumber; 
-        int numMaxInserts;
-        int maxInsertsPerSecond;
-        DBIIBench db;
-        
-        java.util.Random rand;
+        private int threadNumber;
+        private int numMaxInserts;
+        private int maxInsertsPerSecond;
         private int documentsPerInsert;
-        //private String randomStringForHolder;
-        //private String compressibleStringHolder;
+
+        private java.util.Random rand;
+
+        private DBIIBench db;
         private IIbenchConfig config;
 
-        MyWriter(int threadCount, int threadNumber, int numMaxInserts, DBIIBench db, int maxInsertsPerSecond, int documentsPerInsert,
+        MyWriter(int threadNumber, int numMaxInserts, DBIIBench db, int maxInsertsPerSecond, int documentsPerInsert,
                  final String randomStringForHolder, final String compressibleStringHolder, final IIbenchConfig config) {
-            this.threadCount = threadCount;
             this.threadNumber = threadNumber;
             this.numMaxInserts = numMaxInserts;
             this.maxInsertsPerSecond = maxInsertsPerSecond;
-            this.db = db;
+
             rand = new java.util.Random((long) threadNumber);
             this.documentsPerInsert = documentsPerInsert;
-            //this.randomStringForHolder = randomStringForHolder;
-            //this.compressibleStringHolder = compressibleStringHolder;
+
+            this.db = db;
             this.config = config;
         }
         public void run() {
-            // String collectionName = "purchases_index";
-            // DBCollection coll = db.getCollection(collectionName);
-        
             long numInserts = 0;
             long numLastInserts = 0;
-            //int id = 0;
             long nextMs = System.currentTimeMillis() + 1000;
             
             try {
                 log.debug("Writer thread {} : started to load collection {}", threadNumber, db.getCollectionName());
-                
-                int numRounds = numMaxInserts / documentsPerInsert;
+                final int numRounds = numMaxInserts / documentsPerInsert;
                 
                 for (int roundNum = 0; roundNum < numRounds; roundNum++) {
                     if ((numInserts - numLastInserts) >= maxInsertsPerSecond) {
@@ -300,7 +292,6 @@ public class IIbench {
 
                     final List<Map<String, Object>> docs = new ArrayList<>();
                     for (int i = 0; i < config.getNumDocumentsPerInsert(); i++) {
-                        //id++;
                         final Map<String, Object> map = new HashMap<>();
                         final int thisCustomerId = rand.nextInt(numCustomers);
                         map.put("dateandtime", System.currentTimeMillis());
@@ -316,34 +307,30 @@ public class IIbench {
                         numInserts += config.getNumDocumentsPerInsert();
                         IIbench.globalInserts.addAndGet(config.getNumDocumentsPerInsert());
 
-                    } catch (Exception e) {
-                        //TODO: log.debug("Writer thread {} : EXCEPTION",threadNumber);
-                        e.printStackTrace();
+                    } catch (final Exception e) {
+                        log.debug("Writer thread {} : EXCEPTION", threadNumber, e);
                         IIbench.globalInsertExceptions.incrementAndGet();
                     }
-                    
-                    if (allDone == 1)
+                    if (allDone == 1) {
                         break;
+                    }
                 }
-
-            } catch (Exception e) {
-                log.debug("Writer thread {} : EXCEPTION",threadNumber);
-                e.printStackTrace();
+            } catch (final Exception e) {
+                log.debug("Writer thread {} : EXCEPTION", threadNumber, e);
             }
-            
-            long numWriters = globalWriterThreads.decrementAndGet();
-            if (numWriters == 0)
+            final long numWriters = globalWriterThreads.decrementAndGet();
+            if (numWriters == 0) {
                 allDone = 1;
+            }
         }
     }
 
-
     class MyQuery implements Runnable {
-        int threadCount; 
-        int threadNumber;
-        DBIIBench db;
+        private int threadCount;
+        private int threadNumber;
+        private DBIIBench db;
 
-        java.util.Random rand;
+        private java.util.Random rand;
         private int msBetweenQueries;
         private int queryLimit;
 
@@ -355,13 +342,9 @@ public class IIbench {
             this.msBetweenQueries = msBetweenQueries;
             this.queryLimit = queryLimit;
         }
+
         public void run() {
             long t0 = System.currentTimeMillis();
-            //String collectionName = "purchases_index";
-            //DBCollection coll = db.getCollection(collectionName);
-        
-            long numQueriesExecuted = 0;
-            long numQueriesTimeMs = 0;
             int whichQuery = 0;
             
             try {
@@ -386,13 +369,13 @@ public class IIbench {
                     int thisCustomerId = rand.nextInt(numCustomers);
                     double thisPrice = ((rand.nextDouble() * maxPrice) + (double) thisCustomerId) / 100.0;
                     int thisCashRegisterId = rand.nextInt(numCashRegisters);
-                    int thisProductId = rand.nextInt(numProducts);
+                    // int thisProductId = rand.nextInt(numProducts);
                     long thisRandomTime = t0 + (long) ((double) (thisNow - t0) * rand.nextDouble());
 
                     long elapsed = db.queryAndMeasureElapsed(whichQuery, thisPrice, thisCashRegisterId, thisRandomTime,
                             thisCustomerId, queryLimit);
                     
-                    //log.debug("Query thread {} : performing : {}",threadNumber,thisSelect);
+                    // log.debug("Query thread {} : performing : {}",threadNumber,thisSelect);
                     
                     globalQueriesExecuted.incrementAndGet();
                     globalQueriesTimeMs.addAndGet(elapsed);
@@ -403,7 +386,7 @@ public class IIbench {
                 e.printStackTrace();
             }
             
-            long numQueries = globalQueryThreads.decrementAndGet();
+            // long numQueries = globalQueryThreads.decrementAndGet();
         }
     }
 
@@ -533,8 +516,8 @@ public class IIbench {
             thisQueriesMs = globalQueriesTimeMs.get();
             thisQueriesStarted = globalQueriesStarted.get();
             intervalNumber++;
-            nextFeedbackMillis = t0 + (1000 * config.getNumSecondsPerFeedback() * (intervalNumber + 1));
-            nextFeedbackInserts = (intervalNumber + 1) * config.getNumInsertsPerFeedback();
+            // nextFeedbackMillis = t0 + (1000 * config.getNumSecondsPerFeedback() * (intervalNumber + 1));
+            // nextFeedbackInserts = (intervalNumber + 1) * config.getNumInsertsPerFeedback();
             long elapsed = now - t0;
             long thisIntervalMs = now - lastMs;
             long thisIntervalInserts = thisInserts - lastInserts;
