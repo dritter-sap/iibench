@@ -1,4 +1,4 @@
-iibench-mongodb
+iibench-mongodb [![Build Status](https://travis-ci.com/dritter-sap/iibench-mongodb.svg?branch=master)](https://travis-ci.com/dritter-sap/iibench-mongodb)
 ===============
 
 Indexed insertion Benchmark (iiBench) for MongoDB and OrientDB. The original benchmark was developed by Percona (cf. https://github.com/tmcallaghan/iibench-mongodb), however, last updated in 2014.
