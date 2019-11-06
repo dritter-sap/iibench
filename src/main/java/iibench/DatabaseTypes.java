@@ -1,9 +1,6 @@
 package iibench;
 
-import iibench.databases.HDBDocStoreIIBench;
-import iibench.databases.MongoIIBench;
-import iibench.databases.MongoIIBenchOldAPI;
-import iibench.databases.OrientIIBench;
+import iibench.databases.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,6 +11,8 @@ public class DatabaseTypes {
         put("orientdb", new OrientIIBench());
         put("mongodb", new MongoIIBench());
         put("mongodbold", new MongoIIBenchOldAPI());
+        put("orientdbhash", new OrientHashIIBench());
+        put("mongodbhash", new MongoHashIIBench());
     }};
 
     public static DBIIBench select(final String dbType) {

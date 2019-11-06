@@ -83,7 +83,7 @@ public class IIbench {
 
     private void run() {
         final Properties props = new Properties();
-        DBIIBench databaseType=null;
+        DBIIBench databaseType = null;
         try {
             props.load(IIbench.class.getResourceAsStream(IIBENCH_PROPERTIES_FILE_NAME));
             this.mixinCmdParameterValues(props);
