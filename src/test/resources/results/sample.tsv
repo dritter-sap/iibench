@@ -1,0 +1,2 @@
+tot_inserts	elap_secs	cum_ips	int_ips	cum_qry_avg	int_qry_avg	cum_qps	int_qps	exceptions
+100000	3	26288,39	26288,39	0,00	0,00	0,00	0,00	0
