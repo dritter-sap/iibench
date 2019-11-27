@@ -58,7 +58,7 @@
         <dependency>
             <groupId>org.knowm.xchart</groupId>
             <artifactId>xchart</artifactId>
-            <version>3.6.0</version>
+            <version>3.5.2</version>
         </dependency>
 
         <!-- test -->
@@ -141,7 +141,7 @@
                         <!-- Separate source elements rather than multiple class under a single source element -->
                         <source>
                             <classes>
-                                <class>IIBench</class>
+                                <class>IIbench</class>
                             </classes>
                         </source>
                     </sources>

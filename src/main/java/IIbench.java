@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicLong;
         description = "Provides a basic example CLI",
         defaultCommand = IIbench.class,
         commands = { IIbench.class})
-@Command(name = "IIBench", description = "Indexed insertion benchmark")
+@Command(name = "IIbench", description = "Indexed insertion benchmark")
 public class IIbench {
     private static final Logger log = LoggerFactory.getLogger(IIbench.class);
 
