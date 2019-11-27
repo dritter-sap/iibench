@@ -25,23 +25,45 @@ public class PostProcessingTest {
     }
 
     @Test
-    public void postProcess() throws Exception {
+    public void postProcess_responseTime() throws Exception {
         final List<LineResultData> lrds = new ArrayList<>();
-        lrds.add(getLineResultData("sample"));
-        lrds.add(getLineResultData("sample2"));
+        lrds.add(getLineResultData("sample", "tot_inserts", "elap_secs"));
+        lrds.add(getLineResultData("sample2", "tot_inserts", "elap_secs"));
 
-        final XYChart chart = plotter.getXYChart("Sample iiBench", "Json documents", "Seconds");
+        final XYChart chart = plotter.getXYChart("Sample iiBench (response time)", "Json documents", "Seconds");
         plotter.addSeriesToLineChart(chart, lrds);
-        plotter.exportChartAsPDF(chart, "target/sampleIIBench");
+        plotter.exportChartAsPDF(chart, "target/sampleIIBench_responseTime");
     }
 
-    private LineResultData getLineResultData(final String tableName) throws SQLException {
-        final ResultSet resultsSample = queryTimeElapsed(tableName);
+    @Test
+    public void postProcess_insert() throws Exception {
+        final List<LineResultData> lrds = new ArrayList<>();
+        lrds.add(getLineResultData("sample", "tot_inserts", "int_ips"));
+        lrds.add(getLineResultData("sample2", "tot_inserts", "int_ips"));
+
+        final XYChart chart = plotter.getXYChart("Sample iiBench (insert)", "Json documents", "Inserts per Second");
+        plotter.addSeriesToLineChart(chart, lrds);
+        plotter.exportChartAsPDF(chart, "target/sampleIIBench_insert");
+    }
+
+    @Test
+    public void postProcess_query() throws Exception {
+        final List<LineResultData> lrds = new ArrayList<>();
+        lrds.add(getLineResultData("sample", "tot_inserts", "cum_qps"));
+        lrds.add(getLineResultData("sample2", "tot_inserts", "cum_qps"));
+
+        final XYChart chart = plotter.getXYChart("Sample iiBench (query)", "Json documents", "Queries per Second");
+        plotter.addSeriesToLineChart(chart, lrds);
+        plotter.exportChartAsPDF(chart, "target/sampleIIBench_query");
+    }
+
+    private LineResultData getLineResultData(final String tableName, final String... fields) throws SQLException {
+        final ResultSet resultsSample = queryTimeElapsed(tableName, fields);
         final List<Double> xData = new ArrayList<>();
         final List<Double> yData = new ArrayList<>();
         while (resultsSample.next()) {
-            yData.add(resultsSample.getDouble("elap_secs"));
-            xData.add(resultsSample.getDouble("tot_inserts"));
+            yData.add(resultsSample.getDouble(fields[1]));
+            xData.add(resultsSample.getDouble(fields[0]));
         }
         final LineResultData lrd = new LineResultData(tableName);
         lrd.addXData(xData);
@@ -49,9 +71,13 @@ public class PostProcessingTest {
         return lrd;
     }
 
-    private ResultSet queryTimeElapsed(final String tableName) throws SQLException {
+    private ResultSet queryTimeElapsed(final String tableName, final String... fields) throws SQLException {
         final Statement stmt = ds.getConnection().createStatement();
-        return stmt.executeQuery("SELECT tot_inserts,elap_secs FROM " + tableName);
+        return stmt.executeQuery("SELECT " + toCommaSeparatedString(fields) + " FROM " + tableName);
+    }
+
+    private String toCommaSeparatedString(final String[] fields) {
+        return String.join(",", fields);
     }
 
     @After
