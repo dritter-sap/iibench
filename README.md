@@ -7,6 +7,7 @@ Contributions:
 * fixed bugs (e.g., threading problems)
 * ported benchmark to mongodb v3.11.1
 * added a benchmark for orientdb v3.0.24
+* added post-processing for visualization of results
 
 
 Requirements
