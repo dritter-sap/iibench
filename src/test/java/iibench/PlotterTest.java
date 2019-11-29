@@ -6,6 +6,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.knowm.xchart.CategoryChart;
 import org.knowm.xchart.XYChart;
+import org.knowm.xchart.style.Styler;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -21,7 +22,7 @@ public class PlotterTest {
 
     @Test
     public void histogram() throws Exception {
-        final CategoryChart chart = plotter.getCategoryChart("Test chart name", "Test x axis", "Test y axis");
+        final CategoryChart chart = plotter.getCategoryChart("Test chart name", "Test x axis", "Test y axis", Styler.LegendPosition.InsideNW);
         plotter.addSeriesToHistogram(chart);
         plotter.exportChartAsPDF(chart, "target/histogram");
         Assert.assertTrue(new File("target/histogram.pdf").exists());
@@ -29,7 +30,7 @@ public class PlotterTest {
 
     @Test
     public void lineChart() throws Exception {
-        final XYChart chart = plotter.getXYChart("Test chart name", "Test x axis", "Test y axis");
+        final XYChart chart = plotter.getXYChart("Test chart name", "Test x axis", "Test y axis", Styler.LegendPosition.InsideNW);
         final List<Integer> xData = new ArrayList<Integer>();
         final List<Double> yData = new ArrayList<Double>();
         for (int i = -3; i <= 3; i++) {

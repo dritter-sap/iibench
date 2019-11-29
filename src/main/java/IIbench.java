@@ -3,6 +3,9 @@ import com.github.rvesse.airline.annotations.Cli;
 import com.github.rvesse.airline.annotations.Command;
 import com.github.rvesse.airline.annotations.Option;
 import iibench.DBIIBench;
+import iibench.data.DataGenerator;
+import iibench.data.FixedDataGenerator;
+import iibench.data.RandomDataGenerator;
 import iibench.DatabaseTypes;
 import iibench.IIbenchConfig;
 import iibench.threads.ThreadUtils;
@@ -16,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @Cli(name = "basic",
         description = "Provides a basic example CLI",
         defaultCommand = IIbench.class,
-        commands = { IIbench.class})
+        commands = {IIbench.class})
 @Command(name = "IIbench", description = "Indexed insertion benchmark")
 public class IIbench {
     private static final Logger log = LoggerFactory.getLogger(IIbench.class);
@@ -73,6 +76,12 @@ public class IIbench {
     @Option(name = { "-dbType", "--dbType" }, description = "Database types: 'docstore', 'orientdb', 'mongodb', 'mongodbold'")
     private String dbType = "";
 
+    @Option(name = { "-withIndex", "--withIndex" }, description = "With or without index?")
+    private Boolean withIndex = true;
+
+    @Option(name = { "-generator", "--generator" }, description = "Data generator types: 'fixed', 'random'")
+    private String dataGeneratorType = "random";
+
     public IIbench() {}
 
     public static void main (String[] args) {
@@ -108,18 +117,24 @@ public class IIbench {
         if (config.getWriterThreads() > 1) {
             config.setMaxRows(config.getMaxRows() / config.getWriterThreads());
         }
-        this.createCollectionAndIndex(config, db, "purchases_index");
+        this.createCollectionAndIndex(config, db, "purchases_index", withIndex);
 
+        final List<DataGenerator> dgs = new ArrayList<>(config.getWriterThreads());
         try (final Writer writer = new BufferedWriter(new FileWriter(new File(db.getClass().getSimpleName()
                 + "-qTs_" + config.getQueryThreads()
                 + "-wTs_" + config.getWriterThreads()
                 + "-batch_" + config.getNumDocumentsPerInsert()
                 + "-qNumDocsBegin_" + config.getQueryNumDocsBegin()
                 + "-host_" + config.getServerName()
+                + "-db_" + config.getDbType()
                 + "-"
                 + config.getLogFileName())))) {
             final Thread reporterThread = startReporterThread(config, writer);
-            final Thread[] writerThreads = startWriterThread(config, db);
+
+            for (int threadNumber=0; threadNumber<config.getWriterThreads(); threadNumber++) {
+                dgs.add(selectDataGenerator(dataGeneratorType, threadNumber));
+            }
+            final Thread[] writerThreads = startWriterThread(config, db, dgs);
 
             Thread[] queryThreads = null;
             if (config.getMaxRows() > config.getQueryNumDocsBegin()) {
@@ -135,6 +150,16 @@ public class IIbench {
         } finally {
             db.disconnect(config.getDbName());
             log.debug("Done!");
+        }
+    }
+
+    private DataGenerator selectDataGenerator(final String dataGeneratorType, final int threadNumber) {
+        if ("random".equals(dataGeneratorType)) {
+            return new RandomDataGenerator(threadNumber);
+        } else if ("fixed".equals(dataGeneratorType)) {
+            return new FixedDataGenerator();
+        } else {
+            throw new IllegalArgumentException("Unknown data generator type '" + dataGeneratorType + "'.");
         }
     }
 
@@ -201,24 +226,26 @@ public class IIbench {
         return reporterThread;
     }
 
-    private Thread[] startWriterThread(final IIbenchConfig config, final DBIIBench db) {
+    private Thread[] startWriterThread(final IIbenchConfig config, final DBIIBench db, final List<DataGenerator> dgs) {
         final Thread[] tWriterThreads = new Thread[config.getWriterThreads()];
         for (int i=0; i<config.getWriterThreads(); i++) {
             globalWriterThreads.incrementAndGet();
             tWriterThreads[i] = new Thread(this.new MyWriter(i, config.getMaxRows(), db,
                     config.getMaxThreadInsertsPerSecond(), config.getNumDocumentsPerInsert(), createRandomStringForHolder(),
-                    createCompressibleStringHolder(), config)); // config.getWriterThreads()
+                    createCompressibleStringHolder(), config, dgs.get(i))); // config.getWriterThreads()
             tWriterThreads[i].start();
         }
         return tWriterThreads;
     }
 
-    private void createCollectionAndIndex(final IIbenchConfig config, final DBIIBench db, final String collectionName) {
+    private void createCollectionAndIndex(final IIbenchConfig config, final DBIIBench db, final String collectionName, final boolean createIndex) {
         if (config.getCreateCollection().equals("n")) {
             log.debug("Skipping collection creation");
         } else {
             db.createCollection(collectionName);
-            db.createIndexForCollection();
+            if (createIndex) {
+                db.createIndexForCollection();
+            }
         }
     }
 
@@ -250,22 +277,21 @@ public class IIbench {
         private int maxInsertsPerSecond;
         private int documentsPerInsert;
 
-        private java.util.Random rand;
-
-        private DBIIBench db;
-        private IIbenchConfig config;
+        private final DBIIBench     db;
+        private final IIbenchConfig config;
+        private final DataGenerator dg;
 
         MyWriter(int threadNumber, int numMaxInserts, DBIIBench db, int maxInsertsPerSecond, int documentsPerInsert,
-                 final String randomStringForHolder, final String compressibleStringHolder, final IIbenchConfig config) {
-            this.threadNumber = threadNumber;
-            this.numMaxInserts = numMaxInserts;
+                 final String randomStringForHolder, final String compressibleStringHolder, final IIbenchConfig config,
+                 final DataGenerator dg) {
+            this.threadNumber        = threadNumber;
+            this.numMaxInserts       = numMaxInserts;
             this.maxInsertsPerSecond = maxInsertsPerSecond;
-
-            rand = new java.util.Random((long) threadNumber);
-            this.documentsPerInsert = documentsPerInsert;
+            this.documentsPerInsert  = documentsPerInsert;
 
             this.db = db;
             this.config = config;
+            this.dg = dg;
         }
         public void run() {
             long numInserts = 0;
@@ -289,20 +315,9 @@ public class IIbench {
                         numLastInserts = numInserts;
                         nextMs = System.currentTimeMillis() + 1000;
                     }
-
-                    final List<Map<String, Object>> docs = new ArrayList<>();
-                    for (int i = 0; i < config.getNumDocumentsPerInsert(); i++) {
-                        final Map<String, Object> map = new HashMap<>();
-                        final int thisCustomerId = rand.nextInt(numCustomers);
-                        map.put("dateandtime", System.currentTimeMillis());
-                        map.put("cashregisterid", rand.nextInt(numCashRegisters));
-                        map.put("customerid", thisCustomerId);
-                        map.put("productid", rand.nextInt(numProducts));
-                        map.put("price", ((rand.nextDouble() * maxPrice) + (double) thisCustomerId) / 100.0);
-                        docs.add(map);
-                    }
+                    final List<Map<String, Object>> docs = dg.generateBatch(config.getNumDocumentsPerInsert(), numCustomers,
+                            numCashRegisters, numProducts, maxPrice);
                     db.insertDocumentToCollection(docs, config.getNumDocumentsPerInsert());
-
                     try {
                         numInserts += config.getNumDocumentsPerInsert();
                         IIbench.globalInserts.addAndGet(config.getNumDocumentsPerInsert());
@@ -357,8 +372,7 @@ public class IIbench {
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
-                    }                    
- 
+                    }
                     long thisNow = System.currentTimeMillis();
 
                     whichQuery++;
@@ -374,18 +388,14 @@ public class IIbench {
 
                     long elapsed = db.queryAndMeasureElapsed(whichQuery, thisPrice, thisCashRegisterId, thisRandomTime,
                             thisCustomerId, queryLimit);
-                    
                     // log.debug("Query thread {} : performing : {}",threadNumber,thisSelect);
-                    
                     globalQueriesExecuted.incrementAndGet();
                     globalQueriesTimeMs.addAndGet(elapsed);
                 }
-
-            } catch (Exception e) {
+            } catch (final Exception e) {
                 log.debug("Query thread {} : EXCEPTION",threadNumber);
                 e.printStackTrace();
             }
-            
             // long numQueries = globalQueryThreads.decrementAndGet();
         }
     }
@@ -482,7 +492,6 @@ public class IIbench {
                             writer.write("tot_inserts\telap_secs\tcum_ips\tint_ips\tcum_qry_avg\tint_qry_avg\tcum_qps\tint_qps\texceptions\n");
                             outputHeader = false;
                         }
-                            
                         String statusUpdate = "";
                         
                         if (config.getNumSecondsPerFeedback() > 0) {
@@ -500,7 +509,6 @@ public class IIbench {
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-
                     lastInserts = thisInserts;
                     lastQueriesNum = thisQueriesNum;
                     lastQueriesMs = thisQueriesMs;

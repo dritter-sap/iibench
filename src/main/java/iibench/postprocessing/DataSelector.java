@@ -13,9 +13,9 @@ public class DataSelector {
     public DataSelector() {
     }
 
-    public void connect() throws SQLException, ClassNotFoundException {
+    public void connect(final String path) throws SQLException, ClassNotFoundException {
         Class.forName("org.xbib.jdbc.csv.CsvDriver");
-        final String url = "jdbc:xbib:csv:" + "src/test/resources/results?fileExtension=.tsv&separator=\t&suppressHeaders=false&headerline=tot_inserts\telap_secs\tcum_ips\tint_ips\tcum_qry_avg\tint_qry_avg\tcum_qps\tint_qps\texceptions";
+        final String url = "jdbc:xbib:csv:" + path + "?fileExtension=.tsv&separator=\t&suppressHeaders=false&headerline=tot_inserts\telap_secs\tcum_ips\tint_ips\tcum_qry_avg\tint_qry_avg\tcum_qps\tint_qps\texceptions";
         conn = DriverManager.getConnection(url);
     }
 

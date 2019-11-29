@@ -118,7 +118,7 @@ public class MongoIIBench implements DBIIBench {
               and(gt("price", thisPrice), eq("dateandtime", thisRandomTime)),
               and(gt("price", thisPrice))
       )).projection(fields(include("price", "dateandtime", "customerid")))
-              .limit(queryLimit).forEach(emptyConsumer);
+              .limit(queryLimit).forEach(emptyConsumer); // emptyConsumer
     } else if (whichQuery == 2) {
       coll.find(or(
               and(eq("price", thisPrice), gte("customerid", thisCustomerId)),

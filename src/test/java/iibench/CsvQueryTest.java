@@ -13,7 +13,7 @@ public class CsvQueryTest {
     @Before
     public void setup() throws Exception {
         ds = new DataSelector();
-        ds.connect();
+        ds.connect("src/test/resources/results");
     }
 
     @Test
