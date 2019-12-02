@@ -34,6 +34,8 @@ public class IIbenchConfig {
     private Integer       queryIndexDirection;
     private Integer       maxThreadInsertsPerSecond;
     private String        dbType;
+    private Boolean       withIndex;
+    private String        dataGenType;
 
     public IIbenchConfig(String dbName, int writerThreads, Integer maxRows, Integer numDocumentsPerInsert,
                          Integer numInsertsPerFeedback, Integer numSecondsPerFeedback, String logFileName,
@@ -41,7 +43,8 @@ public class IIbenchConfig {
                          Integer basementSize, Integer numSecondaryIndexes, Integer queryLimit, Long runSeconds,
                          Integer queryNumDocsBegin, Integer maxInsertsPerSecond, Integer numCharFields,
                          Integer lengthCharFields, Integer percentCompressible, String createCollection,
-                         Integer queryThreads, Integer msBetweenQueries, Integer queryIndexDirection, String dbType) {
+                         Integer queryThreads, Integer msBetweenQueries, Integer queryIndexDirection, String dbType,
+                         Boolean withIndex, String dataGenType) {
         this.dbName = dbName;
         this.writerThreads = writerThreads;
         this.maxRows = maxRows;
@@ -67,6 +70,8 @@ public class IIbenchConfig {
         this.msBetweenQueries = msBetweenQueries;
         this.queryIndexDirection = queryIndexDirection;
         this.dbType = dbType;
+        this.withIndex = withIndex;
+        this.dataGenType = dataGenType;
     }
 
     public static IIbenchConfig load(final Properties props) {
@@ -94,7 +99,9 @@ public class IIbenchConfig {
                 .queryThreads(Integer.valueOf(props.getProperty("QUERY_THREADS")))
                 .msBetweenQueries(Integer.valueOf(props.getProperty("MS_BETWEEN_QUERIES")))
                 .queryIndexDirection(Integer.valueOf(props.getProperty("QUERY_DIRECTION")))
-                .dbType(props.getProperty("DB_TYPE")).build();
+                .dbType(props.getProperty("DB_TYPE"))
+                .withIndex(Boolean.parseBoolean(props.getProperty("WITH_INDEX")))
+                .dataGenType(props.getProperty("DATA_GEN_TYPE")).build();
         config.setMaxThreadInsertsPerSecond((int) ((double) config.getMaxInsertsPerSecond() / (config.getWriterThreads() > 0 ? config.getWriterThreads() : 1)));
         return config;
     }
@@ -234,5 +241,13 @@ public class IIbenchConfig {
 
     public String getDbType() {
         return dbType;
+    }
+
+    public Boolean getWithIndex() {
+        return withIndex;
+    }
+
+    public String getDataGenType() {
+        return dataGenType;
     }
 }

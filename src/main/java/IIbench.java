@@ -77,7 +77,7 @@ public class IIbench {
     private String dbType = "";
 
     @Option(name = { "-withIndex", "--withIndex" }, description = "With or without index?")
-    private Boolean withIndex = true;
+    private Boolean withIndex = null;
 
     @Option(name = { "-generator", "--generator" }, description = "Data generator types: 'fixed', 'random'")
     private String dataGeneratorType = "random";
@@ -127,6 +127,8 @@ public class IIbench {
                 + "-qNumDocsBegin_" + config.getQueryNumDocsBegin()
                 + "-host_" + config.getServerName()
                 + "-db_" + config.getDbType()
+                + "-idx_" + config.getWithIndex()
+                + "-type_" + config.getDataGenType()
                 + "-"
                 + config.getLogFileName())))) {
             final Thread reporterThread = startReporterThread(config, writer);
@@ -190,6 +192,12 @@ public class IIbench {
         }
         if (!this.dbType.isEmpty()) {
             props.setProperty("DB_TYPE", this.dbType);
+        }
+        if (this.withIndex != null) {
+            props.setProperty("WITH_INDEX", this.dbType);
+        }
+        if (!this.dataGeneratorType.isEmpty()) {
+            props.setProperty("DATA_GEN_TYPE", this.dataGeneratorType);
         }
     }
 

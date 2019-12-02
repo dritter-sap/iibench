@@ -20,24 +20,26 @@ public class IIbenchBuilder {
     private Integer basementSize;
     private Integer numSecondaryIndexes;
     private Integer queryLimit;
-    private Long runSeconds;
+    private Long    runSeconds;
     private Integer queryNumDocsBegin;
     private Integer maxInsertsPerSecond;
     private Integer numCharFields;
     private Integer lengthCharFields;
     private Integer percentCompressible;
-    private String createCollection;
+    private String  createCollection;
     private Integer queryThreads;
     private Integer msBetweenQueries;
     private Integer queryIndexDirection;
-    private String dbType;
+    private String  dbType;
+    private boolean withIndex;
+    private String  dataGenType;
 
     public IIbenchConfig build() {
         return new IIbenchConfig(dbName, writerThreads, maxRows, numDocumentsPerInsert, numInsertsPerFeedback,
                 numSecondsPerFeedback, logFileName, compressionType, writeConcern, serverName, serverPort, basementSize,
                 numSecondaryIndexes, queryLimit, runSeconds, queryNumDocsBegin, maxInsertsPerSecond, numCharFields,
                 lengthCharFields, percentCompressible, createCollection, queryThreads, msBetweenQueries, queryIndexDirection,
-                dbType);
+                dbType, withIndex, dataGenType);
     }
 
     public IIbenchBuilder dbName(final String dbName) {
@@ -75,6 +77,7 @@ public class IIbenchBuilder {
         return this;
     }
 
+    @Deprecated
     public IIbenchBuilder compressionType(final String compressionType) {
         this.compressionType = compressionType;
         return this;
@@ -95,6 +98,7 @@ public class IIbenchBuilder {
         return this;
     }
 
+    @Deprecated
     public IIbenchBuilder basementSize(final Integer basementSize) {
         this.basementSize = basementSize;
         return this;
@@ -173,6 +177,16 @@ public class IIbenchBuilder {
 
     public IIbenchBuilder dbType(final String dbType) {
         this.dbType = dbType;
+        return this;
+    }
+
+    public IIbenchBuilder withIndex(final boolean withIndex) {
+        this.withIndex = withIndex;
+        return this;
+    }
+
+    public IIbenchBuilder dataGenType(final String dataGenType) {
+        this.dataGenType = dataGenType;
         return this;
     }
 }
