@@ -31,7 +31,7 @@ public class IIbenchBuilder {
     private Integer msBetweenQueries;
     private Integer queryIndexDirection;
     private String  dbType;
-    private boolean withIndex;
+    private String  withIndex;
     private String  dataGenType;
 
     public IIbenchConfig build() {
@@ -180,7 +180,7 @@ public class IIbenchBuilder {
         return this;
     }
 
-    public IIbenchBuilder withIndex(final boolean withIndex) {
+    public IIbenchBuilder withIndex(final String withIndex) {
         this.withIndex = withIndex;
         return this;
     }

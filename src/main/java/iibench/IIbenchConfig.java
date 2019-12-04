@@ -34,7 +34,7 @@ public class IIbenchConfig {
     private Integer       queryIndexDirection;
     private Integer       maxThreadInsertsPerSecond;
     private String        dbType;
-    private Boolean       withIndex;
+    private String       withIndex;
     private String        dataGenType;
 
     public IIbenchConfig(String dbName, int writerThreads, Integer maxRows, Integer numDocumentsPerInsert,
@@ -44,7 +44,7 @@ public class IIbenchConfig {
                          Integer queryNumDocsBegin, Integer maxInsertsPerSecond, Integer numCharFields,
                          Integer lengthCharFields, Integer percentCompressible, String createCollection,
                          Integer queryThreads, Integer msBetweenQueries, Integer queryIndexDirection, String dbType,
-                         Boolean withIndex, String dataGenType) {
+                         String withIndex, String dataGenType) {
         this.dbName = dbName;
         this.writerThreads = writerThreads;
         this.maxRows = maxRows;
@@ -100,7 +100,7 @@ public class IIbenchConfig {
                 .msBetweenQueries(Integer.valueOf(props.getProperty("MS_BETWEEN_QUERIES")))
                 .queryIndexDirection(Integer.valueOf(props.getProperty("QUERY_DIRECTION")))
                 .dbType(props.getProperty("DB_TYPE"))
-                .withIndex(Boolean.parseBoolean(props.getProperty("WITH_INDEX")))
+                .withIndex(props.getProperty("WITH_INDEX")) // Boolean.parseBoolean(props.getProperty("WITH_INDEX"))
                 .dataGenType(props.getProperty("DATA_GEN_TYPE")).build();
         config.setMaxThreadInsertsPerSecond((int) ((double) config.getMaxInsertsPerSecond() / (config.getWriterThreads() > 0 ? config.getWriterThreads() : 1)));
         return config;
@@ -243,7 +243,7 @@ public class IIbenchConfig {
         return dbType;
     }
 
-    public Boolean getWithIndex() {
+    public String getWithIndex() {
         return withIndex;
     }
 

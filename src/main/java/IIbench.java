@@ -76,8 +76,8 @@ public class IIbench {
     @Option(name = { "-dbType", "--dbType" }, description = "Database types: 'docstore', 'orientdb', 'mongodb', 'mongodbold'")
     private String dbType = "";
 
-    @Option(name = { "-withIndex", "--withIndex" }, description = "With or without index?")
-    private Boolean withIndex = null;
+    @Option(name = { "-withIndex", "--withIndex" }, description = "With or without index: 'index', 'noIndex'")
+    private String withIndex = "index";
 
     @Option(name = { "-generator", "--generator" }, description = "Data generator types: 'fixed', 'random'")
     private String dataGeneratorType = "random";
@@ -86,6 +86,7 @@ public class IIbench {
 
     public static void main (String[] args) {
         final SingleCommand<IIbench> parser = SingleCommand.singleCommand(IIbench.class);
+        Arrays.asList(args).stream().forEach(p -> System.out.print(p + "##"));
         final IIbench cmd = parser.parse(args);
         cmd.run();
     }
@@ -117,10 +118,11 @@ public class IIbench {
         if (config.getWriterThreads() > 1) {
             config.setMaxRows(config.getMaxRows() / config.getWriterThreads());
         }
-        this.createCollectionAndIndex(config, db, "purchases_index", withIndex);
+        this.createCollectionAndIndex(config, db, "purchases_index", withIndex(withIndex));
 
         final List<DataGenerator> dgs = new ArrayList<>(config.getWriterThreads());
         try (final Writer writer = new BufferedWriter(new FileWriter(new File(db.getClass().getSimpleName()
+                + "-numDocs" + config.getMaxRows()
                 + "-qTs_" + config.getQueryThreads()
                 + "-wTs_" + config.getWriterThreads()
                 + "-batch_" + config.getNumDocumentsPerInsert()
@@ -153,6 +155,10 @@ public class IIbench {
             db.disconnect(config.getDbName());
             log.debug("Done!");
         }
+    }
+
+    private boolean withIndex(final String withIndex) {
+        return "index".equals(withIndex) ? true : false;
     }
 
     private DataGenerator selectDataGenerator(final String dataGeneratorType, final int threadNumber) {
@@ -193,9 +199,7 @@ public class IIbench {
         if (!this.dbType.isEmpty()) {
             props.setProperty("DB_TYPE", this.dbType);
         }
-        if (this.withIndex != null) {
-            props.setProperty("WITH_INDEX", this.dbType);
-        }
+        props.setProperty("WITH_INDEX", this.withIndex);
         if (!this.dataGeneratorType.isEmpty()) {
             props.setProperty("DATA_GEN_TYPE", this.dataGeneratorType);
         }
