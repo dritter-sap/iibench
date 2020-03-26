@@ -22,9 +22,9 @@ public class PostProcessingTest {
 
     private List<String> tables = new ArrayList<>();
 
-    private static final String dataDirectory = "results/benchmark/simple/test10k"; //"src/test/resources/results";
-    private static final String outputDirectory = "results/benchmark/simple/test10k"; //= "target";
-    private static final String benchmarkName   = "simple";
+    private static final String dataDirectory = "src/test/resources/results";
+    private static final String outputDirectory = "target";
+    private static final String benchmarkName   = "sample";
 
     @Before
     public void setup() throws Exception {
