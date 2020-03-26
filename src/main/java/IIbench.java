@@ -33,7 +33,7 @@ public class IIbench {
     private static AtomicLong globalInsertExceptions = new AtomicLong(0);
 
     private static boolean outputHeader = true;
-    
+
     private static int numCashRegisters = 1000;
     private static int numProducts      = 10000;
     private static int numCustomers     = 100000;
@@ -309,11 +309,11 @@ public class IIbench {
             long numInserts = 0;
             long numLastInserts = 0;
             long nextMs = System.currentTimeMillis() + 1000;
-            
+
             try {
                 log.debug("Writer thread {} : started to load collection {}", threadNumber, db.getCollectionName());
                 final int numRounds = numMaxInserts / documentsPerInsert;
-                
+
                 for (int roundNum = 0; roundNum < numRounds; roundNum++) {
                     if ((numInserts - numLastInserts) >= maxInsertsPerSecond) {
                         // pause until a second has passed
@@ -373,7 +373,7 @@ public class IIbench {
         public void run() {
             long t0 = System.currentTimeMillis();
             int whichQuery = 0;
-            
+
             try {
                 log.debug("Query thread {} : ready to queryAndMeasureElapsed collection {}",threadNumber, db.getCollectionName());
                 while (allDone == 0) {
@@ -391,7 +391,7 @@ public class IIbench {
                     if (whichQuery > 3) {
                         whichQuery = 1;
                     }
-                            
+
                     int thisCustomerId = rand.nextInt(numCustomers);
                     double thisPrice = ((rand.nextDouble() * maxPrice) + (double) thisCustomerId) / 100.0;
                     int thisCashRegisterId = rand.nextInt(numCashRegisters);
@@ -443,12 +443,12 @@ public class IIbench {
                     e.printStackTrace();
                 }
                 long now = System.currentTimeMillis();
-                
+
                 if (now >= endDueToTime)
                 {
                     allDone = 1;
                 }
-                
+
                 thisInserts = globalInserts.get();
                 thisQueriesNum = globalQueriesExecuted.get();
                 thisQueriesMs = globalQueriesTimeMs.get();
@@ -462,7 +462,7 @@ public class IIbench {
 
                     long elapsed = now - t0;
                     long thisIntervalMs = now - lastMs;
-                    
+
                     long thisIntervalInserts = thisInserts - lastInserts;
                     double thisIntervalInsertsPerSecond = thisIntervalInserts/(double)thisIntervalMs*1000.0;
                     double thisInsertsPerSecond = thisInserts/(double)elapsed*1000.0;
@@ -473,7 +473,7 @@ public class IIbench {
                     double thisQueryAvgMs = 0;
                     double thisIntervalAvgQPS = 0;
                     double thisAvgQPS = 0;
-                    
+
                     long thisInsertExceptions = globalInsertExceptions.get();
 
                     if (thisIntervalQueriesNum > 0) {
@@ -482,7 +482,7 @@ public class IIbench {
                     if (thisQueriesNum > 0) {
                         thisQueryAvgMs = thisQueriesMs/(double)thisQueriesNum;
                     }
-                    
+
                     if (thisQueriesStarted > 0) {
                         long adjustedElapsed = now - thisQueriesStarted;
                         if (adjustedElapsed > 0) {
@@ -492,20 +492,20 @@ public class IIbench {
                             thisIntervalAvgQPS = (double)thisIntervalQueriesNum/((double)thisIntervalMs/1000.0);
                         }
                     }
-                    
+
                     if (config.getNumSecondsPerFeedback() > 0) {
                         logMe("%,d inserts : %,d seconds : cum ips=%,.2f : int ips=%,.2f : cum avg qry=%,.2f : int avg qry=%,.2f : cum avg qps=%,.2f : int avg qps=%,.2f : exceptions=%,d", thisInserts, elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS, thisInsertExceptions);
                     } else {
                         logMe("%,d inserts : %,d seconds : cum ips=%,.2f : int ips=%,.2f : cum avg qry=%,.2f : int avg qry=%,.2f : cum avg qps=%,.2f : int avg qps=%,.2f : exceptions=%,d", intervalNumber * config.getNumInsertsPerFeedback(), elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs, thisIntervalQueryAvgMs, thisAvgQPS, thisIntervalAvgQPS, thisInsertExceptions);
                     }
-                    
+
                     try {
                         if (outputHeader) {
                             writer.write("tot_inserts\telap_secs\tcum_ips\tint_ips\tcum_qry_avg\tint_qry_avg\tcum_qps\tint_qps\texceptions\n");
                             outputHeader = false;
                         }
                         String statusUpdate = "";
-                        
+
                         if (config.getNumSecondsPerFeedback() > 0) {
                             statusUpdate = String.format("%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%,d\n",thisInserts,
                                     elapsed / 1000l, thisInsertsPerSecond, thisIntervalInsertsPerSecond, thisQueryAvgMs,
@@ -528,7 +528,7 @@ public class IIbench {
                     lastMs = now;
                 }
             }
-            
+
             // output final numbers...
             long now = System.currentTimeMillis();
             thisInserts = globalInserts.get();

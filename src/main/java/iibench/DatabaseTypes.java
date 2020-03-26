@@ -13,6 +13,10 @@ public class DatabaseTypes {
         put("mongodbold", new MongoIIBenchOldAPI());
         put("orientdbhash", new OrientHashIIBench());
         put("mongodbhash", new MongoHashIIBench());
+
+        put("docstore_simple", new HDBDocStoreSimpleIIBench());
+        put("orientdbhash_simple", new OrientHashSimpleIIBench());
+        put("mongodbhash_simple", new MongoHashSimpleIIBench());
     }};
 
     public static DBIIBench select(final String dbType) {
