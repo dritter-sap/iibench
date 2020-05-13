@@ -36,7 +36,7 @@ public class HDBDocStoreSimpleIIBench implements DBIIBench {
     @Override
     public void disconnect(final String dbName) {
         try(final Connection connection = ds.getConnection(); final Statement stmt = connection.createStatement()) {
-            // stmt.execute("DROP COLLECTION " + collectionName + ";");
+            stmt.execute("DROP COLLECTION " + collectionName + ";");
         } catch (final SQLException e) {
             log.error("Could not delete collection " + collectionName + ".", e);
         }
