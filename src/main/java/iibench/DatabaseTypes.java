@@ -17,6 +17,8 @@ public class DatabaseTypes {
         put("docstore_simple", new HDBDocStoreSimpleIIBench());
         put("orientdbhash_simple", new OrientHashSimpleIIBench());
         put("mongodbhash_simple", new MongoHashSimpleIIBench());
+
+        put("hc_docstore_simple", new HCDocStoreSimpleIIBench());
     }};
 
     public static DBIIBench select(final String dbType) {
