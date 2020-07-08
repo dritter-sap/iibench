@@ -55,6 +55,10 @@ java -jar iibench.jar -host plocal:localhost -user root -password <password> -ma
 java -jar iibench.jar -host localhost -port 27017 -user root -password <password> -maxRows 1000000 -numDocsPerInsert 1000 -queryNumDocsBegin 100000 -numWriterThreads 1 -numQueryThreads 1 -dbType mongodb
 ```
 
+**TODOs**
+- [ ] more sophisticated data model + queries
+- [ ] fix multi-threading
+
 Further reading
 ===============
 
