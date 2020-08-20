@@ -6,6 +6,7 @@ import iibench.postprocessing.Plotter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.Ignore;
 import org.knowm.xchart.XYChart;
 import org.knowm.xchart.style.Styler;
 
@@ -16,6 +17,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+@Ignore
 public class PostProcessingTest {
     private Plotter plotter;
     private DataSelector ds;
