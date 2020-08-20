@@ -1,4 +1,4 @@
-iibench [![Build Status](https://travis-ci.com/dritter-sap/iibench-mongodb.svg?branch=master)](https://travis-ci.com/dritter-sap/iibench-mongodb)
+iibench [![Build Status](https://travis-ci.com/dritter-sap/iibench.svg?branch=master)](https://travis-ci.com/dritter-sap/iibench)
 ===============
 
 (Originally from https://github.com/dritter-sap/iibench-mongodb, but not MongoDB-specific any longer)
