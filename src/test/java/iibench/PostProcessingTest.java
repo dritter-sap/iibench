@@ -22,9 +22,9 @@ public class PostProcessingTest {
 
     private List<String> tables = new ArrayList<>();
 
-    private static final String dataDirectory = "src/test/resources/results";
+    private static final String dataDirectory = "src/test/resources/hc_hana_combined"; // results
     private static final String outputDirectory = "target";
-    private static final String benchmarkName   = "sample";
+    private static final String benchmarkName   = "hc_hana_ds_50m_w3_r8"; // "sample"
 
     @Before
     public void setup() throws Exception {
@@ -40,8 +40,9 @@ public class PostProcessingTest {
         final List<LineResultData> lrds = new ArrayList<>();
         getAndAddResultToLineData(lrds, "tot_inserts", "elap_secs");
         final XYChart chart = createAndFillChartToPlotter(lrds, "Sample iiBench (response time)",
-                "Json documents", "Seconds", Styler.LegendPosition.InsideNW);
+                "Json documents", "Seconds", Styler.LegendPosition.InsideSW);
         exportChartAsPDF(chart, "IIBench_responseTime");
+        exportChartAsPNG(chart, "IIBench_responseTime");
     }
 
     @Test
@@ -51,6 +52,7 @@ public class PostProcessingTest {
         final XYChart chart = createAndFillChartToPlotter(lrds, "Sample iiBench (insert)",
                 "Json documents", "Inserts per Second", Styler.LegendPosition.InsideSW);
         exportChartAsPDF(chart, "IIBench_insert");
+        exportChartAsPNG(chart, "IIBench_insert");
     }
 
     @Test
@@ -58,8 +60,9 @@ public class PostProcessingTest {
         final List<LineResultData> lrds = new ArrayList<>();
         getAndAddResultToLineData(lrds, "tot_inserts", "cum_qps");
         final XYChart chart = createAndFillChartToPlotter(lrds, "Sample iiBench (query)",
-                "Json documents", "Queries per Second", Styler.LegendPosition.InsideNE);
+                "Json documents", "Queries per Second", Styler.LegendPosition.InsideSW);
         exportChartAsPDF(chart, "IIBench_query");
+        exportChartAsPNG(chart, "IIBench_query");
     }
 
     private LineResultData getLineResultData(final String tableName, final String... fields) throws SQLException {
@@ -81,6 +84,12 @@ public class PostProcessingTest {
     private void exportChartAsPDF(XYChart chart, String iiBench_responseTime) throws IOException {
         final long start = System.currentTimeMillis();
         plotter.exportChartAsPDF(chart, outputDirectory + "/" + benchmarkName + iiBench_responseTime);
+        System.out.println("Export PDF " + benchmarkName + " (ms): " + (System.currentTimeMillis() - start));
+    }
+
+    private void exportChartAsPNG(XYChart chart, String iiBench_responseTime) throws IOException {
+        final long start = System.currentTimeMillis();
+        plotter.exportChartAsPNG(chart, outputDirectory + "/" + benchmarkName + iiBench_responseTime);
         System.out.println("Export PDF " + benchmarkName + " (ms): " + (System.currentTimeMillis() - start));
     }
 

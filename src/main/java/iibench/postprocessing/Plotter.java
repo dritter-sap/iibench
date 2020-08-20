@@ -82,4 +82,8 @@ public class Plotter {
     public void exportChartAsPDF(final Chart chart, final String fileName) throws IOException {
         VectorGraphicsEncoder.saveVectorGraphic(chart, fileName, VectorGraphicsEncoder.VectorGraphicsFormat.PDF);
     }
+
+    public void exportChartAsPNG(final Chart chart, final String fileName) throws IOException {
+        BitmapEncoder.saveBitmap(chart, fileName, BitmapEncoder.BitmapFormat.PNG);
+    }
 }
