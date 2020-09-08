@@ -62,6 +62,12 @@ java -jar iibench.jar -host localhost -port 27017 -user root -password <password
 **TODOs**
 - [ ] more sophisticated data model + queries
 - [ ] fix multi-threading
+- [ ] add an optional padding field to get big quickly
+  - [ ] user defined size
+  - [ ] user defined compressible amount
+- [ ] additional query workload features
+  - [ ] randomly select query type (based on indexes)
+- [ ] compare other features in Launchpad version
 
 Further reading
 ===============
