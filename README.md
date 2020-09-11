@@ -6,7 +6,7 @@ iibench [![Build Status](https://travis-ci.com/dritter-sap/iibench.svg?branch=ma
 Indexed insertion Benchmark (iiBench) for MongoDB and OrientDB. The original benchmark was developed by Percona (cf. https://github.com/tmcallaghan/iibench-mongodb), but last updated in 2014.
 **This repository denotes the latest version of the benchmark. All further contributions should go here.**
 
-Contributions:
+**Contributions:**
 * fixed bugs (e.g., threading problems)
 * ported benchmark to mongodb v3.11.1
 * added a benchmark for orientdb v3.0.24
