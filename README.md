@@ -12,6 +12,8 @@ Indexed insertion Benchmark (iiBench) for MongoDB and OrientDB. The original ben
 * added a benchmark for orientdb v3.0.24
 * added post-processing for visualization of results
 
+(see TODOs for open topics)
+
 Requirements
 =====================
 
