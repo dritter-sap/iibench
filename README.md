@@ -8,7 +8,7 @@ Indexed insertion Benchmark (iiBench) for MongoDB and OrientDB. The original ben
 **This repository denotes the latest version of the benchmark. All further contributions should go here.**
 
 **Contributions:**
-* fixed bugs (e.g., threading problems)
+* fixed bugs (e.g., most problematic threading problems)
 * ported benchmark to mongodb v3.11.1
 * added a benchmark for orientdb v3.0.24
 * added post-processing for visualization of results
