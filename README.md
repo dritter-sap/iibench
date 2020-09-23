@@ -73,6 +73,7 @@ java -jar iibench.jar -host localhost -port 27017 -user root -password <password
 - [ ] compare other features in Launchpad version
 - [ ] Update to OrientDB 3.1.x
 - [ ] allow for interleaved insert, query
+- [ ] beyond Java 1.8
 
 Further reading
 ===============
