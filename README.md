@@ -13,6 +13,11 @@ Indexed insertion Benchmark (iiBench) for MongoDB and OrientDB. The original ben
 * added a benchmark for orientdb v3.0.24
 * added post-processing for visualization of results
 
+**Supported indexes**
+
+- hash
+- tree
+
 (see TODOs below for open topics / issues)
 
 Requirements
