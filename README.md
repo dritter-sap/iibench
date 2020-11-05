@@ -86,3 +86,5 @@ Further reading
 * MongoDB 3.2 WiredTiger Benchmark: https://dzone.com/articles/mongodb-32-wiredtiger-in-iibench
 * MongoDB benchmark: sysbench-mongodb IO-bound workload comparison: https://www.percona.com/blog/2015/07/14/mongodb-benchmark-sysbench-mongodb-io-bound-workload-comparison/
 * Linkbench for MySQL & MongoDB with a cached database: http://smalldatum.blogspot.com/2015/07/linkbench-for-mysql-mongodb-with-cached.html
+* PostgreSQL vs. MongoDB: https://www.percona.com/live/e17/sites/default/files/slides/High%20Performance%20JSON%20-%20PostgreSQL%20vs.%20MongoDB%20-%20FileId%20-%20115573.pdf
+* MongoDB sysbench: https://lab-docs.percona.com/en/latest/mongodb-sysbench-hppro2.html
