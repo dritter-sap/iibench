@@ -69,7 +69,7 @@ java -jar iibench.jar -host localhost -port 27017 -user root -password <password
 ```
 
 **TODOs**
-- [ ] initializer: more sophisticated data model + queries
+- [ ] initializer: more sophisticated data model + queries, JSON
 - [ ] fix multi-threading
 - [ ] add an optional padding field to get big quickly
   - [ ] user defined size
