@@ -8,7 +8,7 @@ The original benchmark was developed by Percona (cf. https://github.com/tmcallag
 
 **This repository denotes the latest version of the benchmark. All further contributions should go here.**
 
-**Contributions:**
+**Contributions (so far):**
 * fixed bugs (e.g., most problematic threading problems)
 * ported benchmark to mongodb `v3.11.1`
 * added a benchmark for orientdb `v3.0.24`
