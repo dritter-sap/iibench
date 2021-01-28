@@ -13,7 +13,7 @@ The original benchmark was developed by Percona (cf. https://github.com/tmcallag
 * ported benchmark to mongodb `v3.11.1`
 * added a benchmark for orientdb `v3.0.24`
 * added post-processing for visualization of results
-* improved C:I
+* improved CLI
 
 **Supported indexes**
 
