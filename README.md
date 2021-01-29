@@ -2,7 +2,7 @@ iibench [![Build Status](https://travis-ci.com/dritter-sap/iibench.svg?branch=ma
 ===============
 
 The *Indexed insertion Benchmark* (iiBench) for document stores like [MongoDB](https://www.mongodb.com/) and [OrientDB](https://orientdb.org/) tests the behavior of an index under permanent load (concurrent inserts) and queries on the same index at the same time.
-The original benchmark was developed by Percona (cf. https://github.com/tmcallaghan/iibench-mongodb), but last updated in 2014.
+The original benchmark was developed by Percona (cf. https://github.com/tmcallaghan/iibench-mongodb), specifically targetting MongoDB, but last updated in 2014.
 
 (From [dritter-sap/iibench-mongodb](https://github.com/dritter-sap/iibench-mongodb), originally forked from [iibench-mongodb](https://github.com/tmcallaghan/iibench-mongodb), but not MongoDB-specific any longer.)
 
