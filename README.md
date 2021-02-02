@@ -6,7 +6,7 @@ The original benchmark was developed by Percona (cf. https://github.com/tmcallag
 
 (From [dritter-sap/iibench-mongodb](https://github.com/dritter-sap/iibench-mongodb), originally forked from [iibench-mongodb](https://github.com/tmcallaghan/iibench-mongodb), but not MongoDB-specific any longer.)
 
-**This repository denotes the latest version of the benchmark. All further contributions should go here.**
+> **This repository denotes the latest version of the benchmark. All further contributions should go here.**
 
 **Contributions (so far):**
 * fixed bugs (e.g., most problematic threading problems)
