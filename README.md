@@ -18,7 +18,7 @@ The original benchmark was developed by [Percona](https://www.percona.com/) (cf.
 **Supported indexes**
 
 - hash
-- tree
+- range / tree
 
 (see TODOs below for open topics / issues)
 
