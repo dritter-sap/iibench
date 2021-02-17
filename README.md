@@ -20,7 +20,7 @@ The original benchmark was developed by [Percona](https://www.percona.com/) (cf.
 - hash
 - range / tree
 
-(see TODOs below for open topics / issues)
+(see open topics / issues below)
 
 Requirements
 =====================
@@ -69,7 +69,7 @@ java -jar iibench.jar -host plocal:localhost -user root -password <password> -ma
 java -jar iibench.jar -host localhost -port 27017 -user root -password <password> -maxRows 1000000 -numDocsPerInsert 1000 -queryNumDocsBegin 100000 -numWriterThreads 1 -numQueryThreads 1 -dbType mongodb
 ```
 
-**TODOs**
+**Open topics / issues**
 - [ ] initializer: more sophisticated data model + queries, JSON
 - [ ] fix multi-threading
 - [ ] add an optional padding field to get big quickly
