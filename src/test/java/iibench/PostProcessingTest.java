@@ -24,9 +24,9 @@ public class PostProcessingTest {
 
     private List<String> tables = new ArrayList<>();
 
-    private static final String dataDirectory = "src/test/resources/hc_hana_combined"; // results
+    private static final String dataDirectory = "results";
     private static final String outputDirectory = "target";
-    private static final String benchmarkName   = "hc_hana_ds_50m_w3_r8"; // "sample"
+    private static final String benchmarkName   = "sample";
 
     @Before
     public void setup() throws Exception {
