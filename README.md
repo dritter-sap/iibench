@@ -78,7 +78,7 @@ java -jar iibench.jar -host localhost -port 27017 -user root -password <password
 - [ ] additional query workload features
   - [ ] randomly select query type (based on indexes)
 - [ ] compare other features in Launchpad version
-- [ ] Update to OrientDB 3.1.x
+- [ ] Update to OrientDB 3.1.x, 3.2.x
 - [ ] allow for interleaved insert, query
 - [ ] beyond Java 1.8
 
