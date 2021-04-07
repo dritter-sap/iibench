@@ -81,6 +81,7 @@ java -jar iibench.jar -host localhost -port 27017 -user root -password <password
 - [ ] Update to OrientDB 3.1.x, 3.2.x
 - [ ] allow for interleaved insert, query
 - [ ] beyond Java 1.8
+- [ ] move plotting to https://github.com/manuelh9r/XTChart?
 
 Further reading
 ===============
