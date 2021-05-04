@@ -20,7 +20,7 @@
         <dependency>
             <groupId>com.orientechnologies</groupId>
             <artifactId>orientdb-client</artifactId>
-            <version>3.0.24</version> <!-- TODO: client <> server version should match 3.1.0-SNAPSHOT -->
+            <version>3.2.0</version> <!-- TODO: before 3.0.24, client <> server version should match 3.1.0-SNAPSHOT -->
         </dependency>
 
         <!-- hana db -->
