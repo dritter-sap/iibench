@@ -11,7 +11,7 @@ The original benchmark was developed by [Percona](https://www.percona.com/) (cf.
 **Contributions (so far):**
 * fixed bugs (e.g., threading problems)
 * ported benchmark to mongodb `v3.11.1`
-* added a benchmark for orientdb `v3.0.24`
+* added a benchmark for orientdb `v3.2.0`
 * added post-processing for visualization of results, plotting (using [xchart](https://github.com/knowm/XChart), and [csv-jdbc](http://csvjdbc.sourceforge.net/doc.html))
 * improved CLI (using [airline](https://github.com/airlift/airline))
 
@@ -78,7 +78,7 @@ java -jar iibench.jar -host localhost -port 27017 -user root -password <password
 - [ ] additional query workload features
   - [ ] randomly select query type (based on indexes)
 - [ ] compare other features in Launchpad version
-- [x] Update driver versions (e.g. OrientDB 3.1.x, 3.2.x) -> current version is 3.2.0
+- [x] Update driver versions (e.g. OrientDB 3.1.x, 3.2.x) -> current version is `3.2.0`
 - [ ] allow for interleaved insert, query
 - [ ] beyond Java 1.8
 - [ ] move plotting to https://github.com/manuelh9r/XTChart?
