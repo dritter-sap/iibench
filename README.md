@@ -11,7 +11,7 @@ The original benchmark was developed by [Percona](https://www.percona.com/) (cf.
 **Contributions (so far):**
 * fixed bugs (e.g., threading problems)
 * ported benchmark to mongodb `v3.11.1`
-* added a benchmark for orientdb `v3.2.0`
+* added a benchmark for orientdb `v3.2.0` (latest minor version)
 * added post-processing for visualization of results, plotting (using [xchart](https://github.com/knowm/XChart), and [csv-jdbc](http://csvjdbc.sourceforge.net/doc.html))
 * improved CLI (using [airline](https://github.com/airlift/airline))
 
