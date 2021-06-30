@@ -54,6 +54,8 @@ mvn clean package
 
 *OrientDB*
 
+> start via docker, e.g. `docker run -d --name orientdb -p 2424:2424 -p 2480:2480 -e ORIENTDB_ROOT_PASSWORD=root orientdb:latest`
+
 ```bash 
 [cd target]
 
