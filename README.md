@@ -65,6 +65,8 @@ java -jar iibench.jar -host plocal:localhost -user root -password <password> -ma
 
 *MongoDB*
 
+> start via docker, e.g. `docker run --net host --rm -d -p 27017:27017 mongo`
+
 ```bash
 [cd target]
 
